@@ -1,4 +1,4 @@
-// vscpautomation.cpp
+// automation.cpp
 //
 // This file is part of the VSCP (http://www.vscp.org)
 //
@@ -50,8 +50,6 @@
 ///////////////////////////////////////////////////
 //                 GLOBALS
 ///////////////////////////////////////////////////
-
-extern CControlObject *gpobj;
 
 // Seconds for 24h
 #define SPAN24      (24*3600)

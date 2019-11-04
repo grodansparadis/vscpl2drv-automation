@@ -1,4 +1,4 @@
-// vscpautomation.h
+// automation.h
 //
 // This file is part of the VSCP (http://www.vscp.org)
 //
