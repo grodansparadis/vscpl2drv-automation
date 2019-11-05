@@ -33,7 +33,6 @@ AC_CHECK_LIB([pthread], [pthread_create])
 AC_CHECK_LIB([crypto], [MD5_Init])
 AC_CHECK_LIB([m],[sin])
 AC_CHECK_LIB([rt],[clock_gettime])
-dnl AC_CHECK_LIB([ssl], [SSL_free])
 AC_CHECK_LIB([expat], [XML_ParserCreate])
 
 # Checks for header files.

@@ -37,6 +37,7 @@
 #include <string>
 
 #include <limits.h>
+#include <math.h>
 #include <net/if.h>
 #include <pthread.h>
 #include <semaphore.h>
@@ -48,7 +49,6 @@
 #include <sys/types.h>
 #include <syslog.h>
 #include <unistd.h>
-#include <math.h>
 
 #include <ctype.h>
 #include <errno.h>
@@ -78,7 +78,6 @@
 // Forward declaration
 void *
 workerThread(void *pData);
-
 
 ///////////////////////////////////////////////////
 //                 GLOBALS
@@ -177,13 +176,15 @@ CAutomation::~CAutomation(void)
     XML Setup
     =========
 
+    <?xml version = "1.0" encoding = "UTF-8" ?>
+    <!-- Version 0.0.1    2019-11-05   -->
     <config zone="1"
             subzone="2"
             longitude="15.1604167"
             latitude="61.7441833"
             enable-sunrise="true|false"
             enable-sunrise-twilight="true|false"
-            enable-sunset enable="true|false" />
+            enable-sunset="true|false" />
             enable-sunset-twilight="true|false"
             filter="incoming-filter"
             mask="incoming-mask" >
@@ -199,30 +200,82 @@ startSetupParser(void *data, const char *name, const char **attr)
     CAutomation *pObj = (CAutomation *)data;
     if (NULL == pObj) return;
 
-    if ((0 == strcmp(name, "setup")) && (0 == depth_setup_parser)) {
+    if ((0 == strcmp(name, "config")) && (0 == depth_setup_parser)) {
 
         for (int i = 0; attr[i]; i += 2) {
 
             std::string attribute = attr[i + 1];
             vscp_trim(attribute);
 
-            if (0 == strcasecmp(attr[i], "interface")) {
+            if (0 == strcasecmp(attr[i], "zone")) {
                 if (!attribute.empty()) {
-                    //pObj->m_interface = attribute;
+                    pObj->m_zone = vscp_readStringValue(attribute);
+                }
+            } else if (0 == strcasecmp(attr[i], "subzone")) {
+                if (!attribute.empty()) {
+                    pObj->m_subzone = vscp_readStringValue(attribute);
+                }
+            } else if (0 == strcasecmp(attr[i], "longitude")) {
+                if (!attribute.empty()) {
+                    pObj->setLongitude(atof(attribute.c_str()));
+                }
+            } else if (0 == strcasecmp(attr[i], "latitude")) {
+                if (!attribute.empty()) {
+                    pObj->setLatitude(atof(attribute.c_str()));
+                }
+            } else if (0 == strcasecmp(attr[i], "enable-sunrise")) {
+                if (!attribute.empty()) {
+                    vscp_makeUpper(attribute);
+                    if (std::string::npos == attribute.find("TRUE")) {
+                        pObj->enableSunRiseEvent();
+                    } else {
+                        pObj->disableSunRiseEvent();
+                    }
+                }
+            } else if (0 == strcasecmp(attr[i], "enable-sunrise-twilight")) {
+                if (!attribute.empty()) {
+                    vscp_makeUpper(attribute);
+                    if (std::string::npos == attribute.find("TRUE")) {
+                        pObj->enableSunSetEvent();
+                    } else {
+                        pObj->disableSunSetEvent();
+                    }
+                }
+            } else if (0 == strcasecmp(attr[i], "enable-sunset")) {
+                if (!attribute.empty()) {
+                    vscp_makeUpper(attribute);
+                    if (std::string::npos == attribute.find("TRUE")) {
+                        pObj->enableSunRiseTwilightEvent();
+                    } else {
+                        pObj->disableSunRiseTwilightEvent();
+                    }
+                }
+            } else if (0 == strcasecmp(attr[i], "enable-sunset-twilight")) {
+                if (!attribute.empty()) {
+                    vscp_makeUpper(attribute);
+                    if (std::string::npos == attribute.find("TRUE")) {
+                        pObj->enableSunSetTwilightEvent();
+                    } else {
+                        pObj->disableSunSetTwilightEvent();
+                    }
                 }
             } else if (0 == strcasecmp(attr[i], "filter")) {
                 if (!attribute.empty()) {
-                    // if (!vscp_readFilterFromString(&pObj->m_vscpfilter,
-                    //                                attribute)) {
-                    //     syslog(LOG_ERR, "[vscpl2drv-automation] Unable to read event receive filter.");
-                    // }
+                    if (!vscp_readFilterFromString(&pObj->m_vscpfilter,
+                                                   attribute)) {
+                        syslog(LOG_ERR,
+                               "[vscpl2drv-automation] Unable to read event "
+                               "receive filter.");
+                    }
                 }
             } else if (0 == strcasecmp(attr[i], "mask")) {
                 if (!attribute.empty()) {
-                    // if (!vscp_readMaskFromString(&pObj->m_vscpfilter,
-                    //                              attribute)) {
-                    //     syslog(LOG_ERR, "[vscpl2drv-automation] Unable to read event receive mask.");
-                    // }
+                    if (!vscp_readMaskFromString(&pObj->m_vscpfilter,
+                                                 attribute)) {
+                        syslog(LOG_ERR,
+                               "[vscpl2drv-automation] Unable to read event "
+                               "receive mask.");
+                    }
                 }
             }
         }
@@ -257,10 +310,10 @@ CAutomation::open(const std::string &path)
     XML_SetUserData(xmlParser, this);
     XML_SetElementHandler(xmlParser, startSetupParser, endSetupParser);
 
-     int bytes_read;
+    int bytes_read;
     void *buff = XML_GetBuffer(xmlParser, XML_BUFF_SIZE);
 
-     strncpy((char *)buf, strSetupXML.c_str(), strSetupXML.length());
+    strncpy((char *)buf, strSetupXML.c_str(), strSetupXML.length());
 
     bytes_read = strSetupXML.length();
     if (!XML_ParseBuffer(xmlParser, bytes_read, bytes_read == 0)) {
@@ -274,7 +327,8 @@ CAutomation::open(const std::string &path)
     // start the workerthread
     if (pthread_create(&m_threadWork, NULL, workerThread, this)) {
 
-        syslog(LOG_ERR, "[vscpl2drv-automation] Unable to start worker thread.");
+        syslog(LOG_ERR,
+               "[vscpl2drv-automation] Unable to start worker thread.");
         return false;
     }
 
@@ -297,8 +351,6 @@ CAutomation::close(void)
     m_bQuit = true; // terminate the thread
     sleep(1);       // Give the thread some time to terminate
 }
-
-
 
 ///////////////////////////////////////////////////////////////////////////////
 // isDaylightSavingTime
@@ -753,8 +805,6 @@ CAutomation::doWork(vscpEventEx *pEventEx)
 
 // ----------------------------------------------------------------------------
 
-
-
 //////////////////////////////////////////////////////////////////////
 // addEvent2SendQueue
 //
@@ -783,17 +833,19 @@ workerThread(void *pData)
 
     CAutomation *pObj = (CAutomation *)pData;
     if (NULL == pObj) {
-        syslog(LOG_ERR, "[vscpl2drv-automation] No object data supplied for worker thread");
+        syslog(
+          LOG_ERR,
+          "[vscpl2drv-automation] No object data supplied for worker thread");
         return NULL;
     }
 
 #if DEBUG
-    syslog(LOG_DEBUG, "[vscpl2drv-automation] CWriteSocketCanTread: Interface: %s\n", ifname);
+    syslog(LOG_DEBUG,
+           "[vscpl2drv-automation] CWriteSocketCanTread: Interface: %s\n",
+           ifname);
 #endif
 
     while (!pObj->m_bQuit) {
-
-
 
 #ifdef DEBUG
         syslog(LOG_DEBUG, "using interface name '%s'.\n", ifr.ifr_name);
@@ -915,7 +967,8 @@ workerThread(void *pData)
             //                 frame.len = ((pEvent->sizeData - 16) > 8
             //                                ? 8
             //                                : pEvent->sizeData - 16);
-            //                 memcpy(frame.data, pEvent->pdata + 16, frame.len);
+            //                 memcpy(frame.data, pEvent->pdata + 16,
+            //                 frame.len);
             //             }
             //         }
 
@@ -925,7 +978,8 @@ workerThread(void *pData)
             //         pthread_mutex_unlock(&pObj->m_mutexSendQueue);
 
             //         // Write the data
-            //         int nbytes = write(sock, &frame, sizeof(struct can_frame));
+            //         int nbytes = write(sock, &frame, sizeof(struct
+            //         can_frame));
 
             //     } // event to send
 

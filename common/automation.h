@@ -249,7 +249,7 @@ class CAutomation
     /// Run flag
     bool m_bQuit;
 
-    /// Filter
+    /// Incoming filter
     vscpEventFilter m_vscpfilter;
 
     /// Get GUID for this interface.
@@ -271,8 +271,6 @@ class CAutomation
     pthread_mutex_t m_mutexSendQueue;
     pthread_mutex_t m_mutexReceiveQueue;
 
-  private:
-
     bool m_bEnableAutomation;
 
     /// Zone that automation server belongs to
@@ -280,6 +278,14 @@ class CAutomation
 
     /// Sub zone that automation server belongs to
     uint8_t m_subzone;
+
+    /// Longitude for this server
+    double m_longitude;
+
+    /// Latitude for this server
+    double m_latitude;
+
+    private:
 
     /*!
         Enable/disable the CLASS1.INFORMATION, Type=52 (Civil sunrise twilight
@@ -324,12 +330,6 @@ class CAutomation
     double m_declination;
     double m_daylength; // hours/minutes
     double m_SunMaxAltitude;
-
-    /// Longitude for this server
-    double m_longitude;
-
-    /// Latitude for this server
-    double m_latitude;
 
     /*!
         Calculations done every 24 hours and at startup

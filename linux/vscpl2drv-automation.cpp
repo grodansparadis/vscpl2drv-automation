@@ -221,14 +221,7 @@ VSCPWrite(long handle, const vscpEvent *pEvent, unsigned long timeout)
     CAutomation *pdrvObj = getDriverObject(handle);
     if (NULL == pdrvObj) return CANAL_ERROR_MEMORY;
 
-    // vscpEvent *pEventNew = new vscpEvent;
-    // if ( NULL != pEventNew ) {
-    //    copyVSCPEvent( pEventNew, pEvent );
     pdrvObj->addEvent2SendQueue(pEvent);
-    //}
-    // else {
-    //    return CANAL_ERROR_MEMORY;
-    //}
 
     return CANAL_ERROR_SUCCESS;
 }
@@ -274,7 +267,11 @@ VSCPRead(long handle, vscpEvent *pEvent, unsigned long timeout)
 extern "C" unsigned long
 VSCPGetVersion(void)
 {
-    return VSCP_DLL_VERSION;
+    unsigned long ver = MAJOR_VERSION << 24 |
+        MINOR_VERSION << 16 |
+        RELEASE_VERSION << 8 |
+        BUILD_VERSION;
+    return ver;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
