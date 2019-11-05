@@ -4,7 +4,8 @@
 //
 // The MIT License (MIT)
 //
-// Copyright (C) 2000-2019 Ake Hedman, Grodans Paradis AB <info@grodansparadis.com>
+// Copyright (C) 2000-2019 Ake Hedman, Grodans Paradis AB
+// <info@grodansparadis.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -13,8 +14,9 @@
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
 //
-// The above copyright notice cat /sys/class/net/eth0/addressand this permission notice shall be included in all
-// copies or substantial portions of the Software.
+// The above copyright notice cat /sys/class/net/eth0/addressand this permission
+// notice shall be included in all copies or substantial portions of the
+// Software.
 //
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
@@ -26,33 +28,64 @@
 //
 
 #ifdef __GNUG__
-    //#pragma implementation
+//#pragma implementation
 #endif
 
 #define _POSIX
 
+#include <list>
 #include <string>
-#include <algorithm>
 
+#include <limits.h>
+#include <net/if.h>
+#include <pthread.h>
+#include <semaphore.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/ioctl.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <syslog.h>
 #include <unistd.h>
 #include <math.h>
 
+#include <ctype.h>
+#include <errno.h>
+#include <libgen.h>
+#include <net/if.h>
+#include <signal.h>
+#include <sys/ioctl.h>
+#include <sys/socket.h>
+#include <sys/time.h>
+#include <sys/types.h>
+#include <sys/uio.h>
+#include <time.h>
+
+#include <expat.h>
+
 #include <vscp.h>
-#include <vscphelper.h>
 #include <vscp_class.h>
 #include <vscp_type.h>
-#include <controlobject.h>
-#include <vscpdatetime.h>
+#include <vscphelper.h>
+#include <vscpremotetcpif.h>
 
 #include "automation.h"
+
+// Buffer for XML parser
+#define XML_BUFF_SIZE 10000
+
+// Forward declaration
+void *
+workerThread(void *pData);
+
 
 ///////////////////////////////////////////////////
 //                 GLOBALS
 ///////////////////////////////////////////////////
 
 // Seconds for 24h
-#define SPAN24      (24*3600)
+#define SPAN24 (24 * 3600)
 
 //-----------------------------------------------------------------------------
 //                   Helpers for sunrise/sunset calculations
@@ -73,91 +106,212 @@ static double SunDia = 0.53; // Sun radius degrees
 
 static double AirRefr = 34.0 / 60.0; // atmospheric refraction degrees //
 
-
-
-
 //-----------------------------------------------------------------------------
 //                       End of sunset/sunrise functions
 //-----------------------------------------------------------------------------
-
-
 
 ///////////////////////////////////////////////////////////////////////////////
 // Constructor
 //
 
-CAutomation::CAutomation( void )
+CAutomation::CAutomation(void)
 {
-    m_pCtrlObj = NULL;
-
     m_bEnableAutomation = true;
 
-    m_zone = 0;
+    m_zone    = 0;
     m_subzone = 0;
 
     // Take me the freedom to use my own place as reference
-    m_longitude =  15.1604167;  // Home sweet home
-    m_latitude = 61.7441833;
+    m_longitude = 15.1604167; // Home sweet home
+    m_latitude  = 61.7441833;
 
-    m_bSegmentControllerHeartbeat = true;
-    m_intervalSegmentControllerHeartbeat = 60;
-
-    m_bCapabilitiesEvent = true;
-    m_intervalCapabilities = 60;
-
-    m_bHeartBeatEvent = true;
-    m_intervalHeartBeat = 60;
-
-    m_bSunRiseEvent = true;
+    m_bSunRiseEvent         = true;
     m_bSunRiseTwilightEvent = true;
-    m_bSunSetEvent = true;
-    m_bSunSetTwilightEvent = true;
-    m_bCalculatedNoonEvent = true;
+    m_bSunSetEvent          = true;
+    m_bSunSetTwilightEvent  = true;
+    m_bCalculatedNoonEvent  = true;
 
-    m_declination = 0.0f;
-    m_daylength = 0.0f;
+    m_declination    = 0.0f;
+    m_daylength      = 0.0f;
     m_SunMaxAltitude = 0.0f;
 
-    m_bCalulationHasBeenDone = false;   // No calculations has been done yet
+    m_bCalulationHasBeenDone = false; // No calculations has been done yet
 
     // Set to some early date to indicate that they have not been sent
-    m_civilTwilightSunriseTime_sent  = vscpdatetime::dateTimeZero();
-    m_SunriseTime_sent = vscpdatetime::dateTimeZero();
-    m_SunsetTime_sent = vscpdatetime::dateTimeZero();
+    m_civilTwilightSunriseTime_sent = vscpdatetime::dateTimeZero();
+    m_SunriseTime_sent              = vscpdatetime::dateTimeZero();
+    m_SunsetTime_sent               = vscpdatetime::dateTimeZero();
     m_civilTwilightSunsetTime_sent  = vscpdatetime::dateTimeZero();
-    m_noonTime_sent = vscpdatetime::dateTimeZero();
+    m_noonTime_sent                 = vscpdatetime::dateTimeZero();
 
     m_lastCalculation = vscpdatetime::Now();
 
-    m_Heartbeat_Level1_sent =  vscpdatetime::dateTimeZero();
-    m_Heartbeat_Level2_sent = vscpdatetime::dateTimeZero();
+    m_bQuit = false;
+    vscp_clearVSCPFilter(&m_vscpfilter); // Accept all events
 
-    m_SegmentHeartbeat_sent =  vscpdatetime::dateTimeZero();
+    sem_init(&m_semSendQueue, 0, 0);
+    sem_init(&m_semReceiveQueue, 0, 0);
 
-    m_Capabilities_sent = vscpdatetime::dateTimeZero();
+    pthread_mutex_init(&m_mutexSendQueue, NULL);
+    pthread_mutex_init(&m_mutexReceiveQueue, NULL);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 // Destructor
 //
 
-CAutomation::~CAutomation( void )
+CAutomation::~CAutomation(void)
 {
-    ;
+    close();
+
+    sem_destroy(&m_semSendQueue);
+    sem_destroy(&m_semReceiveQueue);
+
+    pthread_mutex_destroy(&m_mutexSendQueue);
+    pthread_mutex_destroy(&m_mutexReceiveQueue);
 }
+
+// ----------------------------------------------------------------------------
+
+/*
+    XML Setup
+    =========
+
+    <config zone="1"
+            subzone="2"
+            longitude="15.1604167"
+            latitude="61.7441833"
+            enable-sunrise="true|false"
+            enable-sunrise-twilight="true|false"
+            enable-sunset enable="true|false" />
+            enable-sunset-twilight="true|false"
+            filter="incoming-filter"
+            mask="incoming-mask" >
+*/
+
+// ----------------------------------------------------------------------------
+
+int depth_setup_parser = 0;
+
+void
+startSetupParser(void *data, const char *name, const char **attr)
+{
+    CAutomation *pObj = (CAutomation *)data;
+    if (NULL == pObj) return;
+
+    if ((0 == strcmp(name, "setup")) && (0 == depth_setup_parser)) {
+
+        for (int i = 0; attr[i]; i += 2) {
+
+            std::string attribute = attr[i + 1];
+            vscp_trim(attribute);
+
+            if (0 == strcasecmp(attr[i], "interface")) {
+                if (!attribute.empty()) {
+                    //pObj->m_interface = attribute;
+                }
+            } else if (0 == strcasecmp(attr[i], "filter")) {
+                if (!attribute.empty()) {
+                    // if (!vscp_readFilterFromString(&pObj->m_vscpfilter,
+                    //                                attribute)) {
+                    //     syslog(LOG_ERR, "[vscpl2drv-automation] Unable to read event receive filter.");
+                    // }
+                }
+            } else if (0 == strcasecmp(attr[i], "mask")) {
+                if (!attribute.empty()) {
+                    // if (!vscp_readMaskFromString(&pObj->m_vscpfilter,
+                    //                              attribute)) {
+                    //     syslog(LOG_ERR, "[vscpl2drv-automation] Unable to read event receive mask.");
+                    // }
+                }
+            }
+        }
+    }
+
+    depth_setup_parser++;
+}
+
+void
+endSetupParser(void *data, const char *name)
+{
+    depth_setup_parser--;
+}
+
+// ----------------------------------------------------------------------------
+
+//////////////////////////////////////////////////////////////////////
+// open
+//
+
+bool
+CAutomation::open(const std::string &path)
+{
+    char buf[XML_BUFF_SIZE];
+
+    // XML setup
+    std::string strSetupXML;
+
+    // Read configuration file
+
+    XML_Parser xmlParser = XML_ParserCreate("UTF-8");
+    XML_SetUserData(xmlParser, this);
+    XML_SetElementHandler(xmlParser, startSetupParser, endSetupParser);
+
+     int bytes_read;
+    void *buff = XML_GetBuffer(xmlParser, XML_BUFF_SIZE);
+
+     strncpy((char *)buf, strSetupXML.c_str(), strSetupXML.length());
+
+    bytes_read = strSetupXML.length();
+    if (!XML_ParseBuffer(xmlParser, bytes_read, bytes_read == 0)) {
+        syslog(LOG_ERR, "[vscpl2drv-automation] Failed parse XML setup.");
+        XML_ParserFree(xmlParser);
+        return false;
+    }
+
+    XML_ParserFree(xmlParser);
+
+    // start the workerthread
+    if (pthread_create(&m_threadWork, NULL, workerThread, this)) {
+
+        syslog(LOG_ERR, "[vscpl2drv-automation] Unable to start worker thread.");
+        return false;
+    }
+
+    // Close the channel
+    close();
+
+    return true;
+}
+
+//////////////////////////////////////////////////////////////////////
+// close
+//
+
+void
+CAutomation::close(void)
+{
+    // Do nothing if already terminated
+    if (m_bQuit) return;
+
+    m_bQuit = true; // terminate the thread
+    sleep(1);       // Give the thread some time to terminate
+}
+
 
 
 ///////////////////////////////////////////////////////////////////////////////
 // isDaylightSavingTime
 //
 
-int CAutomation::isDaylightSavingTime( void )
+int
+CAutomation::isDaylightSavingTime(void)
 {
     time_t rawtime;
     struct tm *timeinfo;
 
-    time ( &rawtime );
-    timeinfo = localtime ( &rawtime );
+    time(&rawtime);
+    timeinfo = localtime(&rawtime);
     return timeinfo->tm_isdst;
 }
 
@@ -165,22 +319,23 @@ int CAutomation::isDaylightSavingTime( void )
 // getTimeZoneDiffHours
 //
 
-int CAutomation::getTimeZoneDiffHours( void )
+int
+CAutomation::getTimeZoneDiffHours(void)
 {
     time_t rawtime;
     struct tm *timeinfo;
     struct tm *timeinfo_gmt;
     int h1, h2;
 
-    time ( &rawtime );
-    timeinfo = localtime( &rawtime );
-    h2 = timeinfo->tm_hour;
-    if ( 0 == h2 ) h2 = 24;
+    time(&rawtime);
+    timeinfo = localtime(&rawtime);
+    h2       = timeinfo->tm_hour;
+    if (0 == h2) h2 = 24;
 
-    timeinfo_gmt = gmtime( &rawtime );
-    h1 = timeinfo_gmt->tm_hour;
+    timeinfo_gmt = gmtime(&rawtime);
+    h1           = timeinfo_gmt->tm_hour;
 
-    return ( h2 - h1 );
+    return (h2 - h1);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -191,14 +346,14 @@ int CAutomation::getTimeZoneDiffHours( void )
 // FNday only works between 1901 to 2099 - see Meeus chapter 7
 //
 
-double CAutomation::FNday(int y, int m, int d, float h)
+double
+CAutomation::FNday(int y, int m, int d, float h)
 {
     long int luku = -7 * (y + (m + 9) / 12) / 4 + 275 * m / 9 + d;
     // type casting necessary on PC DOS and TClite to avoid overflow
-    luku += (long int) y * 367;
-    return(double) luku - 730531.5 + h / 24.0;
+    luku += (long int)y * 367;
+    return (double)luku - 730531.5 + h / 24.0;
 };
-
 
 ///////////////////////////////////////////////////////////////////////////////
 // FNrange
@@ -207,10 +362,11 @@ double CAutomation::FNday(int y, int m, int d, float h)
 // 0 to 2*pi
 //
 
-double CAutomation::FNrange(double x)
+double
+CAutomation::FNrange(double x)
 {
     double b = 0.5 * x / pi;
-    double a = 2.0 * pi * (b - (long) (b));
+    double a = 2.0 * pi * (b - (long)(b));
     if (a < 0) a = 2.0 * pi + a;
     return a;
 };
@@ -221,7 +377,8 @@ double CAutomation::FNrange(double x)
 // Calculating the hourangle
 //
 
-double CAutomation::f0(double lat, double declin)
+double
+CAutomation::f0(double lat, double declin)
 {
     double fo, dfo;
     // Correction: different sign at S HS
@@ -239,7 +396,8 @@ double CAutomation::f0(double lat, double declin)
 // Calculating the hourangle for twilight times
 //
 
-double CAutomation::f1(double lat, double declin)
+double
+CAutomation::f1(double lat, double declin)
 {
     double fi, df1;
     // Correction: different sign at S HS
@@ -251,13 +409,13 @@ double CAutomation::f1(double lat, double declin)
     return fi;
 };
 
-
 ///////////////////////////////////////////////////////////////////////////////
 // FNsun
 //
 //   Find the ecliptic longitude of the Sun
 
-double CAutomation::FNsun(double d)
+double
+CAutomation::FNsun(double d)
 {
 
     //   mean longitude of the Sun
@@ -270,30 +428,31 @@ double CAutomation::FNsun(double d)
     return FNrange(L + 1.915 * rads * sin(g) + .02 * rads * sin(2 * g));
 };
 
-
 ///////////////////////////////////////////////////////////////////////////////
 // convert2HourMinute
 //
 // Display decimal hours in hours and minutes
 //
 
-void CAutomation::convert2HourMinute( double floatTime, int *pHours, int *pMinutes )
+void
+CAutomation::convert2HourMinute(double floatTime, int *pHours, int *pMinutes)
 {
-    *pHours = ((int)floatTime) % 24;
-    *pMinutes = ((int)((floatTime - (double)*pHours)*60 )) % 60;
+    *pHours   = ((int)floatTime) % 24;
+    *pMinutes = ((int)((floatTime - (double)*pHours) * 60)) % 60;
 };
-
 
 ///////////////////////////////////////////////////////////////////////////////
 // calcSun
 //
 
-void CAutomation::calcSun( void )
+void
+CAutomation::calcSun(void)
 {
     double year, month, day, hour;
     double d, lambda;
     double obliq, alpha, delta, LL, equation, ha, hb, twx;
-    double twilightSunrise, maxAltitude, noonTime, sunsetTime, sunriseTime, twilightSunset;
+    double twilightSunrise, maxAltitude, noonTime, sunsetTime, sunriseTime,
+      twilightSunset;
     double tzone = 0;
 
     degs = 180.0 / pi;
@@ -304,15 +463,15 @@ void CAutomation::calcSun( void )
 
     // First get time
     vscpdatetime nowLocal = vscpdatetime::Now();
-    year = nowLocal.getYear();
-    month = nowLocal.getMonth() + 1;
-    day = nowLocal.getDay();
-    hour = nowLocal.getHour();
+    year                  = nowLocal.getYear();
+    month                 = nowLocal.getMonth() + 1;
+    day                   = nowLocal.getDay();
+    hour                  = nowLocal.getHour();
 
     // Set offset from UTC - daytimesaving is taken care of
-    //vscpdatetime::TimeZone ttt( vscpdatetime::Local );
-    //tzone = ttt.GetOffset()/3600;
-    tzone = vscpdatetime::tzOffset2LocalTime();  // TODO CHECK!!!!!!
+    // vscpdatetime::TimeZone ttt( vscpdatetime::Local );
+    // tzone = ttt.GetOffset()/3600;
+    tzone = vscpdatetime::tzOffset2LocalTime(); // TODO CHECK!!!!!!
 
     // Adjust for daylight saving time
     /*if ( isDaylightSavingTime() ) {
@@ -337,10 +496,10 @@ void CAutomation::calcSun( void )
     LL = L - alpha;
     if (L < pi) LL += 2.0 * pi;
     equation = 1440.0 * (1.0 - LL / pi / 2.0);
-    ha = f0(m_latitude, delta);
-    hb = f1(m_latitude, delta);
-    twx = hb - ha;          // length of twilight in radians
-    twx = 12.0 * twx / pi;  // length of twilight in hours
+    ha       = f0(m_latitude, delta);
+    hb       = f1(m_latitude, delta);
+    twx      = hb - ha;         // length of twilight in radians
+    twx      = 12.0 * twx / pi; // length of twilight in hours
 
     // Conversion of angle to hours and minutes
     daylen = degs * ha / 7.5;
@@ -349,24 +508,26 @@ void CAutomation::calcSun( void )
     }
 
     // arctic winter
-    sunriseTime = 12.0 - 12.0 * ha / pi + tzone - m_longitude / 15.0 + equation / 60.0;
-    sunsetTime = 12.0 + 12.0 * ha / pi + tzone - m_longitude / 15.0 + equation / 60.0;
-    noonTime = sunriseTime + 12.0 * ha / pi;
+    sunriseTime =
+      12.0 - 12.0 * ha / pi + tzone - m_longitude / 15.0 + equation / 60.0;
+    sunsetTime =
+      12.0 + 12.0 * ha / pi + tzone - m_longitude / 15.0 + equation / 60.0;
+    noonTime    = sunriseTime + 12.0 * ha / pi;
     maxAltitude = 90.0 + delta * degs - m_latitude;
     // Correction for S HS suggested by David Smith
     // to express altitude as degrees from the N horizon
-    if ( m_latitude < delta * degs ) maxAltitude = 180.0 - maxAltitude;
+    if (m_latitude < delta * degs) maxAltitude = 180.0 - maxAltitude;
 
-    twilightSunrise = sunriseTime - twx;    // morning twilight begin
-    twilightSunset = sunsetTime + twx;      // evening twilight end
+    twilightSunrise = sunriseTime - twx; // morning twilight begin
+    twilightSunset  = sunsetTime + twx;  // evening twilight end
 
     if (sunriseTime > 24.0) sunriseTime -= 24.0;
     if (sunsetTime > 24.0) sunsetTime -= 24.0;
-    if (twilightSunrise > 24.0) twilightSunrise -= 24.0;    // 160921
+    if (twilightSunrise > 24.0) twilightSunrise -= 24.0; // 160921
     if (twilightSunset > 24.0) twilightSunset -= 24.0;
 
-    m_declination = delta * degs;
-    m_daylength = daylen;
+    m_declination    = delta * degs;
+    m_daylength      = daylen;
     m_SunMaxAltitude = maxAltitude;
 
     // Set last calculated time
@@ -375,348 +536,404 @@ void CAutomation::calcSun( void )
     int intHour, intMinute;
 
     // Civil Twilight Sunrise
-    convert2HourMinute( twilightSunrise, &intHour, &intMinute );
+    convert2HourMinute(twilightSunrise, &intHour, &intMinute);
     m_civilTwilightSunriseTime = vscpdatetime::Now();
-    m_civilTwilightSunriseTime.zeroTime();     // Set to midnight
-    m_civilTwilightSunriseTime.setHour( intHour );
-    m_civilTwilightSunriseTime.setMinute( intMinute );
+    m_civilTwilightSunriseTime.zeroTime(); // Set to midnight
+    m_civilTwilightSunriseTime.setHour(intHour);
+    m_civilTwilightSunriseTime.setMinute(intMinute);
 
     // Sunrise
-    convert2HourMinute( sunriseTime, &intHour, &intMinute );
+    convert2HourMinute(sunriseTime, &intHour, &intMinute);
     m_SunriseTime = vscpdatetime::Now();
-    m_SunriseTime.zeroTime();     // Set to midnight
-    m_SunriseTime.setHour( intHour );
-    m_SunriseTime.setMinute( intMinute );
+    m_SunriseTime.zeroTime(); // Set to midnight
+    m_SunriseTime.setHour(intHour);
+    m_SunriseTime.setMinute(intMinute);
 
     // Sunset
-    convert2HourMinute( sunsetTime, &intHour, &intMinute );
+    convert2HourMinute(sunsetTime, &intHour, &intMinute);
     m_SunsetTime = vscpdatetime::Now();
-    m_SunsetTime.zeroTime();     // Set to midnight
-    m_SunsetTime.setHour( intHour );
-    m_SunsetTime.setMinute( intMinute );
+    m_SunsetTime.zeroTime(); // Set to midnight
+    m_SunsetTime.setHour(intHour);
+    m_SunsetTime.setMinute(intMinute);
 
     // Civil Twilight Sunset
-    convert2HourMinute( twilightSunset, &intHour, &intMinute );
+    convert2HourMinute(twilightSunset, &intHour, &intMinute);
     m_civilTwilightSunsetTime = vscpdatetime::Now();
-    m_civilTwilightSunsetTime.zeroTime();     // Set to midnight
-    m_civilTwilightSunsetTime.setHour( intHour );
-    m_civilTwilightSunsetTime.setMinute( intMinute );
+    m_civilTwilightSunsetTime.zeroTime(); // Set to midnight
+    m_civilTwilightSunsetTime.setHour(intHour);
+    m_civilTwilightSunsetTime.setMinute(intMinute);
 
     // NoonTime
-    convert2HourMinute( noonTime, &intHour, &intMinute );
+    convert2HourMinute(noonTime, &intHour, &intMinute);
     m_noonTime = vscpdatetime::Now();
-    m_noonTime.zeroTime();     // Set to midnight
-    m_noonTime.setHour( intHour );
-    m_noonTime.setMinute( intMinute );
+    m_noonTime.zeroTime(); // Set to midnight
+    m_noonTime.setHour(intHour);
+    m_noonTime.setMinute(intMinute);
 }
-
 
 ///////////////////////////////////////////////////////////////////////////////
 // doWork
 //
 
-bool CAutomation::doWork( vscpEventEx *pEventEx )
+bool
+CAutomation::doWork(vscpEventEx *pEventEx)
 {
     std::string str;
     vscpdatetime now = vscpdatetime::Now();
-    ////xxTimeSpan span24( 24 );  // Twentyfour hour span
 
     // Calculate Sunrise/sunset parameters once a day
-    if ( !m_bCalulationHasBeenDone &&
-            ( 0 == vscpdatetime::Now().getHour() ) ) {
+    if (!m_bCalulationHasBeenDone && (0 == vscpdatetime::Now().getHour())) {
 
         calcSun();
         m_bCalulationHasBeenDone = true;
 
         int hours, minutes;
-        m_pCtrlObj->m_automation.convert2HourMinute( m_pCtrlObj->m_automation.getDayLength(),
-                                                        &hours,
-                                                        &minutes );
+        convert2HourMinute(getDayLength(), &hours, &minutes);
 
         // Send VSCP_CLASS2_VSCPD, Type=30/VSCP2_TYPE_VSCPD_NEW_CALCULATION
-        pEventEx->obid = 0;     // IMPORTANT Must be set by caller before event is sent
-        pEventEx->head = 0;
+        pEventEx->obid =
+          0; // IMPORTANT Must be set by caller before event is sent
+        pEventEx->head      = 0;
         pEventEx->timestamp = vscp_makeTimeStamp();
-        vscp_setEventExToNow( pEventEx ); // Set time to current time
+        vscp_setEventExToNow(pEventEx); // Set time to current time
         pEventEx->vscp_class = VSCP_CLASS2_VSCPD;
-        pEventEx->vscp_type = VSCP2_TYPE_VSCPD_NEW_CALCULATION;
-        pEventEx->sizeData = 0;
+        pEventEx->vscp_type  = VSCP2_TYPE_VSCPD_NEW_CALCULATION;
+        pEventEx->sizeData   = 0;
 
         // IMPORTANT - GUID must be set by caller before event is sent
 
         return true;
-
     }
 
     // Trigger for next noon calculation
-    if ( 0 != vscpdatetime::Now().getHour() ) {
+    if (0 != vscpdatetime::Now().getHour()) {
         m_bCalulationHasBeenDone = false;
     }
 
     // Sunrise Time
-    if ( ( now.getYear() == m_SunriseTime.getYear() ) &&
-         ( now.getMonth() == m_SunriseTime.getMonth() ) &&
-         ( now.getDay() == m_SunriseTime.getDay() ) &&
-         ( now.getHour() == m_SunriseTime.getHour() ) &&
-         ( now.getMinute() == m_SunriseTime.getMinute() ) ) {
+    if ((now.getYear() == m_SunriseTime.getYear()) &&
+        (now.getMonth() == m_SunriseTime.getMonth()) &&
+        (now.getDay() == m_SunriseTime.getDay()) &&
+        (now.getHour() == m_SunriseTime.getHour()) &&
+        (now.getMinute() == m_SunriseTime.getMinute())) {
 
-        m_SunriseTime += SPAN24;   // Add 24h's
+        m_SunriseTime += SPAN24; // Add 24h's
         m_SunriseTime_sent = vscpdatetime::Now();
 
         // Send VSCP_CLASS1_INFORMATION, Type=44/VSCP_TYPE_INFORMATION_SUNRISE
-        pEventEx->obid = 0;     // IMPORTANT Must be set by caller before event is sent
-        pEventEx->head = 0;
+        pEventEx->obid =
+          0; // IMPORTANT Must be set by caller before event is sent
+        pEventEx->head      = 0;
         pEventEx->timestamp = vscp_makeTimeStamp();
-        vscp_setEventExToNow( pEventEx ); // Set time to current time
+        vscp_setEventExToNow(pEventEx); // Set time to current time
         pEventEx->vscp_class = VSCP_CLASS1_INFORMATION;
-        pEventEx->vscp_type = VSCP_TYPE_INFORMATION_SUNRISE;
-        pEventEx->sizeData = 3;
+        pEventEx->vscp_type  = VSCP_TYPE_INFORMATION_SUNRISE;
+        pEventEx->sizeData   = 3;
         // IMPORTANT - GUID must be set by caller before event is sent
-        pEventEx->data[ 0 ] = 0;            // index
-        pEventEx->data[ 1 ] = m_zone;       // zone
-        pEventEx->data[ 2 ] = m_subzone;    // subzone
+        pEventEx->data[0] = 0;         // index
+        pEventEx->data[1] = m_zone;    // zone
+        pEventEx->data[2] = m_subzone; // subzone
 
         return true;
     }
 
     // Civil Twilight Sunrise Time
-    if ( ( now.getYear() == m_civilTwilightSunriseTime.getYear() ) &&
-         ( now.getMonth() == m_civilTwilightSunriseTime.getMonth() ) &&
-         ( now.getDay() == m_civilTwilightSunriseTime.getDay() ) &&
-         ( now.getHour() == m_civilTwilightSunriseTime.getHour() ) &&
-         ( now.getMinute() == m_civilTwilightSunriseTime.getMinute() ) ) {
+    if ((now.getYear() == m_civilTwilightSunriseTime.getYear()) &&
+        (now.getMonth() == m_civilTwilightSunriseTime.getMonth()) &&
+        (now.getDay() == m_civilTwilightSunriseTime.getDay()) &&
+        (now.getHour() == m_civilTwilightSunriseTime.getHour()) &&
+        (now.getMinute() == m_civilTwilightSunriseTime.getMinute())) {
 
-        m_civilTwilightSunriseTime += SPAN24;   // Add 24h's
+        m_civilTwilightSunriseTime += SPAN24; // Add 24h's
         m_civilTwilightSunriseTime_sent = vscpdatetime::Now();
 
-        // Send VSCP_CLASS1_INFORMATION, Type=52/VSCP_TYPE_INFORMATION_SUNRISE_TWILIGHT_START
-        pEventEx->obid = 0;     // IMPORTANT Must be set by caller before event is sent
-        pEventEx->head = 0;
+        // Send VSCP_CLASS1_INFORMATION,
+        // Type=52/VSCP_TYPE_INFORMATION_SUNRISE_TWILIGHT_START
+        pEventEx->obid =
+          0; // IMPORTANT Must be set by caller before event is sent
+        pEventEx->head      = 0;
         pEventEx->timestamp = vscp_makeTimeStamp();
-        vscp_setEventExToNow( pEventEx ); // Set time to current time
+        vscp_setEventExToNow(pEventEx); // Set time to current time
         pEventEx->vscp_class = VSCP_CLASS1_INFORMATION;
-        pEventEx->vscp_type = VSCP_TYPE_INFORMATION_SUNRISE_TWILIGHT_START;
-        pEventEx->sizeData = 3;
+        pEventEx->vscp_type  = VSCP_TYPE_INFORMATION_SUNRISE_TWILIGHT_START;
+        pEventEx->sizeData   = 3;
         // IMPORTANT - GUID must be set by caller before event is sent
-        pEventEx->data[ 0 ] = 0;            // index
-        pEventEx->data[ 1 ] = m_zone;       // zone
-        pEventEx->data[ 2 ] = m_subzone;    // subzone
+        pEventEx->data[0] = 0;         // index
+        pEventEx->data[1] = m_zone;    // zone
+        pEventEx->data[2] = m_subzone; // subzone
 
         return true;
     }
 
     // Sunset Time
-    if ( ( now.getYear() == m_SunsetTime.getYear() ) &&
-         ( now.getMonth() == m_SunsetTime.getMonth() ) &&
-         ( now.getDay() == m_SunsetTime.getDay() ) &&
-         ( now.getHour() == m_SunsetTime.getHour() ) &&
-         ( now.getMinute() == m_SunsetTime.getMinute() ) ) {
+    if ((now.getYear() == m_SunsetTime.getYear()) &&
+        (now.getMonth() == m_SunsetTime.getMonth()) &&
+        (now.getDay() == m_SunsetTime.getDay()) &&
+        (now.getHour() == m_SunsetTime.getHour()) &&
+        (now.getMinute() == m_SunsetTime.getMinute())) {
 
-        m_SunsetTime += SPAN24;     // Add 24h's
+        m_SunsetTime += SPAN24; // Add 24h's
         m_SunsetTime_sent = vscpdatetime::Now();
 
         // Send VSCP_CLASS1_INFORMATION, Type=45/VSCP_TYPE_INFORMATION_SUNSET
-        pEventEx->obid = 0;         // IMPORTANT Must be set by caller before event is sent
-        pEventEx->head = 0;
+        pEventEx->obid =
+          0; // IMPORTANT Must be set by caller before event is sent
+        pEventEx->head      = 0;
         pEventEx->timestamp = vscp_makeTimeStamp();
-        vscp_setEventExToNow( pEventEx ); // Set time to current time
+        vscp_setEventExToNow(pEventEx); // Set time to current time
         pEventEx->vscp_class = VSCP_CLASS1_INFORMATION;
-        pEventEx->vscp_type = VSCP_TYPE_INFORMATION_SUNSET;
-        pEventEx->sizeData = 3;
+        pEventEx->vscp_type  = VSCP_TYPE_INFORMATION_SUNSET;
+        pEventEx->sizeData   = 3;
         // IMPORTANT - GUID must be set by caller before event is sent
-        pEventEx->data[ 0 ] = 0;            // index
-        pEventEx->data[ 1 ] = m_zone;       // zone
-        pEventEx->data[ 2 ] = m_subzone;    // subzone
+        pEventEx->data[0] = 0;         // index
+        pEventEx->data[1] = m_zone;    // zone
+        pEventEx->data[2] = m_subzone; // subzone
 
         return true;
     }
 
     // Civil Twilight Sunset Time
-    if ( ( now.getYear() == m_civilTwilightSunsetTime.getYear() ) &&
-         ( now.getMonth() == m_civilTwilightSunsetTime.getMonth() ) &&
-         ( now.getDay() == m_civilTwilightSunsetTime.getDay() ) &&
-         ( now.getHour() == m_civilTwilightSunsetTime.getHour() ) &&
-         ( now.getMinute() == m_civilTwilightSunsetTime.getMinute() ) ) {
+    if ((now.getYear() == m_civilTwilightSunsetTime.getYear()) &&
+        (now.getMonth() == m_civilTwilightSunsetTime.getMonth()) &&
+        (now.getDay() == m_civilTwilightSunsetTime.getDay()) &&
+        (now.getHour() == m_civilTwilightSunsetTime.getHour()) &&
+        (now.getMinute() == m_civilTwilightSunsetTime.getMinute())) {
 
-        m_civilTwilightSunsetTime += SPAN24;   // Add 24h's
+        m_civilTwilightSunsetTime += SPAN24; // Add 24h's
         m_civilTwilightSunsetTime_sent = vscpdatetime::Now();
 
-        // Send VSCP_CLASS1_INFORMATION, Type=53/VSCP_TYPE_INFORMATION_SUNSET_TWILIGHT_START
-        pEventEx->obid = 0;     // IMPORTANT Must be set by caller before event is sent
-        pEventEx->head = 0;
+        // Send VSCP_CLASS1_INFORMATION,
+        // Type=53/VSCP_TYPE_INFORMATION_SUNSET_TWILIGHT_START
+        pEventEx->obid =
+          0; // IMPORTANT Must be set by caller before event is sent
+        pEventEx->head      = 0;
         pEventEx->timestamp = vscp_makeTimeStamp();
-        vscp_setEventExToNow( pEventEx ); // Set time to current time
+        vscp_setEventExToNow(pEventEx); // Set time to current time
         pEventEx->vscp_class = VSCP_CLASS1_INFORMATION;
-        pEventEx->vscp_type = VSCP_TYPE_INFORMATION_SUNSET_TWILIGHT_START;
-        pEventEx->sizeData = 3;
+        pEventEx->vscp_type  = VSCP_TYPE_INFORMATION_SUNSET_TWILIGHT_START;
+        pEventEx->sizeData   = 3;
         // IMPORTANT - GUID must be set by caller before event is sent
-        pEventEx->data[ 0 ] = 0;            // index
-        pEventEx->data[ 1 ] = m_zone;       // zone
-        pEventEx->data[ 2 ] = m_subzone;    // subzone
+        pEventEx->data[0] = 0;         // index
+        pEventEx->data[1] = m_zone;    // zone
+        pEventEx->data[2] = m_subzone; // subzone
 
         return true;
     }
 
     // Noon Time
-    if ( ( now.getYear() == m_noonTime.getYear() ) &&
-         ( now.getMonth() == m_noonTime.getMonth() ) &&
-         ( now.getDay() == m_noonTime.getDay() ) &&
-         ( now.getHour() == m_noonTime.getHour() ) &&
-         ( now.getMinute() == m_noonTime.getMinute() ) ) {
+    if ((now.getYear() == m_noonTime.getYear()) &&
+        (now.getMonth() == m_noonTime.getMonth()) &&
+        (now.getDay() == m_noonTime.getDay()) &&
+        (now.getHour() == m_noonTime.getHour()) &&
+        (now.getMinute() == m_noonTime.getMinute())) {
 
-        m_noonTime += SPAN24;   // Add 24h's
+        m_noonTime += SPAN24; // Add 24h's
         m_noonTime_sent = vscpdatetime::Now();
 
-        // Send VSCP_CLASS1_INFORMATION, Type=58/VSCP_TYPE_INFORMATION_CALCULATED_NOON
-        pEventEx->obid = 0;         // IMPORTANT Must be set by caller before event is sent
-        pEventEx->head = 0;
+        // Send VSCP_CLASS1_INFORMATION,
+        // Type=58/VSCP_TYPE_INFORMATION_CALCULATED_NOON
+        pEventEx->obid =
+          0; // IMPORTANT Must be set by caller before event is sent
+        pEventEx->head      = 0;
         pEventEx->timestamp = vscp_makeTimeStamp();
-        vscp_setEventExToNow( pEventEx ); // Set time to current time
+        vscp_setEventExToNow(pEventEx); // Set time to current time
         pEventEx->vscp_class = VSCP_CLASS1_INFORMATION;
-        pEventEx->vscp_type = VSCP_TYPE_INFORMATION_CALCULATED_NOON;
-        pEventEx->sizeData = 3;
+        pEventEx->vscp_type  = VSCP_TYPE_INFORMATION_CALCULATED_NOON;
+        pEventEx->sizeData   = 3;
         // IMPORTANT - GUID must be set by caller before event is sent
-        pEventEx->data[ 0 ] = 0;            // index
-        pEventEx->data[ 1 ] = m_zone;       // zone
-        pEventEx->data[ 2 ] = m_subzone;    // subzone
-
-        return true;
-    }
-
-    // Heartbeat Level I
-    //xxTimeSpan HeartBeatLevel1Period( 0, 0, m_intervalHeartBeat );
-
-    if ( m_bHeartBeatEvent &&
-        ( vscpdatetime::diffSeconds(now,m_Heartbeat_Level1_sent ) >= m_intervalHeartBeat ) )  {
-         //( ( vscpdatetime::Now() - m_Heartbeat_Level1_sent ) >= HeartBeatLevel1Period ) ) {
-
-        m_Heartbeat_Level1_sent = vscpdatetime::Now();
-
-        // Send VSCP_CLASS1_INFORMATION, Type=9/VSCP_TYPE_INFORMATION_NODE_HEARTBEAT
-        pEventEx->obid = 0;         // IMPORTANT Must be set by caller before event is sent
-        pEventEx->head = 0;
-        pEventEx->timestamp = vscp_makeTimeStamp();
-        vscp_setEventExToNow( pEventEx ); // Set time to current time
-        pEventEx->vscp_class = VSCP_CLASS1_INFORMATION;
-        pEventEx->vscp_type = VSCP_TYPE_INFORMATION_NODE_HEARTBEAT;
-        pEventEx->sizeData = 3;
-        // IMPORTANT - GUID must be set by caller before event is sent
-        pEventEx->data[ 0 ] = 0;            // index
-        pEventEx->data[ 1 ] = m_zone;       // zone
-        pEventEx->data[ 2 ] = m_subzone;    // subzone
-
-        return true;
-    }
-
-    // Heartbeat Level II
-    //xxTimeSpan HeartBeatLevel2Period( 0, 0, m_intervalHeartBeat );
-    if ( m_bHeartBeatEvent &&
-    ( vscpdatetime::diffSeconds(now,m_Heartbeat_Level2_sent ) >= m_intervalHeartBeat ) )  {
-    //     ( ( vscpdatetime::Now() - m_Heartbeat_Level2_sent ) >= HeartBeatLevel2Period ) ) {
-
-        m_Heartbeat_Level2_sent = vscpdatetime::Now();
-
-        // Send VSCP_CLASS1_INFORMATION, Type=9/VSCP_TYPE_INFORMATION_NODE_HEARTBEAT
-        pEventEx->obid = 0;         // IMPORTANT Must be set by caller before event is sent
-        pEventEx->head = 0;
-        pEventEx->timestamp = vscp_makeTimeStamp();
-        vscp_setEventExToNow( pEventEx ); // Set time to current time
-        pEventEx->vscp_class = VSCP_CLASS2_INFORMATION;
-        pEventEx->vscp_type = VSCP2_TYPE_INFORMATION_HEART_BEAT;
-        pEventEx->sizeData = 64;
-        // IMPORTANT - GUID must be set by caller before event is sent
-
-        memset( pEventEx->data, 0, sizeof( pEventEx->data ) );
-        memcpy( pEventEx->data,
-                    gpobj->m_strServerName.c_str(),
-                    strlen( gpobj->m_strServerName.c_str() ) );
-        return true;
-    }
-
-    // Segment Controller Heartbeat
-    //xxTimeSpan SegmentControllerHeartBeatPeriod( 0, 0, m_intervalSegmentControllerHeartbeat );
-    if ( m_bSegmentControllerHeartbeat &&
-    ( vscpdatetime::diffSeconds(now,m_SegmentHeartbeat_sent ) >= m_intervalSegmentControllerHeartbeat ) )  {
-    //     ( ( vscpdatetime::Now() - m_SegmentHeartbeat_sent ) >= SegmentControllerHeartBeatPeriod ) ) {
-
-        m_SegmentHeartbeat_sent = vscpdatetime::Now();
-
-        // Send VSCP_CLASS1_PROTOCOL, Type=1/VSCP_TYPE_PROTOCOL_SEGCTRL_HEARTBEAT
-        pEventEx->obid = 0;     // IMPORTANT Must be set by caller before event is sent
-        pEventEx->head = 0;
-        pEventEx->timestamp = vscp_makeTimeStamp();
-        vscp_setEventExToNow( pEventEx ); // Set time to current time
-        pEventEx->vscp_class = VSCP_CLASS1_PROTOCOL;
-        pEventEx->vscp_type = VSCP_TYPE_PROTOCOL_SEGCTRL_HEARTBEAT;
-        pEventEx->sizeData = 5;
-
-        // IMPORTANT - GUID must be set by caller before event is sent
-
-        time_t tnow;
-        time( &tnow );
-        uint32_t time32 = (uint32_t)tnow;
-
-        pEventEx->data[ 0 ] = 0;  // 8 - bit crc for VSCP daemon GUID
-        pEventEx->data[ 1 ] = (uint8_t)((time32>>24) & 0xff);    // Time since epoch MSB
-        pEventEx->data[ 2 ] = (uint8_t)((time32>>16) & 0xff);
-        pEventEx->data[ 3 ] = (uint8_t)((time32>>8)  & 0xff);
-        pEventEx->data[ 4 ] = (uint8_t)((time32) & 0xff);        // Time since epoch LSB
-
-        return true;
-
-    }
-
-    // High end server capabilities
-    //xxTimeSpan CapabilitiesPeriod( 0, 0, m_intervalCapabilities );
-    if ( m_bCapabilitiesEvent &&
-    ( vscpdatetime::diffSeconds(now,m_Capabilities_sent ) >= m_intervalCapabilities ) )  {
-    //     ( ( vscpdatetime::Now() - m_Capabilities_sent ) >= CapabilitiesPeriod ) ) {
-
-        m_Capabilities_sent = vscpdatetime::Now();
-        //
-        // Send VSCP_CLASS2_PROTOCOL, Type=20/VSCP2_TYPE_PROTOCOL_HIGH_END_SERVER_CAPS
-        pEventEx->obid = 0;     // IMPORTANT Must be set by caller before event is sent
-        pEventEx->head = 0;
-        pEventEx->timestamp = vscp_makeTimeStamp();
-        vscp_setEventExToNow( pEventEx ); // Set time to current time
-        pEventEx->vscp_class = VSCP_CLASS2_PROTOCOL;
-        pEventEx->vscp_type = VSCP2_TYPE_PROTOCOL_HIGH_END_SERVER_CAPS;
-
-
-        // IMPORTANT - GUID must be set by caller before event is sent
-
-
-        // Fill in data
-        memset( pEventEx->data, 0, sizeof( pEventEx->data ) );
-
-        // GUID
-        memcpy( pEventEx->data + VSCP_CAPABILITY_OFFSET_GUID,
-                    m_pCtrlObj->m_guid.getGUID(), 16 );
-
-        // Server ip address
-        cguid guid;
-        if ( m_pCtrlObj->getIPAddress( guid ) ) {
-            pEventEx->data[ VSCP_CAPABILITY_OFFSET_IP_ADDR ] = guid.getAt(8);
-            pEventEx->data[ VSCP_CAPABILITY_OFFSET_IP_ADDR + 1 ] = guid.getAt(9);
-            pEventEx->data[ VSCP_CAPABILITY_OFFSET_IP_ADDR + 2 ] = guid.getAt(10);
-            pEventEx->data[ VSCP_CAPABILITY_OFFSET_IP_ADDR + 3 ] = guid.getAt(11);
-        }
-
-        // Server name
-        memcpy( pEventEx->data + VSCP_CAPABILITY_OFFSET_SRV_NAME,
-                    (const char *)m_pCtrlObj->m_strServerName.c_str(),
-                    std::min( 64, (int)m_pCtrlObj->m_strServerName.length() ) );
-
-        // Capabilities array
-        m_pCtrlObj->getVscpCapabilities( pEventEx->data );
-
-        // non-standard ports
-        // TODO
-
-        pEventEx->sizeData = 104;
+        pEventEx->data[0] = 0;         // index
+        pEventEx->data[1] = m_zone;    // zone
+        pEventEx->data[2] = m_subzone; // subzone
 
         return true;
     }
 
     return false;
+}
+
+// ----------------------------------------------------------------------------
+
+
+
+//////////////////////////////////////////////////////////////////////
+// addEvent2SendQueue
+//
+
+bool
+CAutomation::addEvent2SendQueue(const vscpEvent *pEvent)
+{
+    pthread_mutex_lock(&m_mutexSendQueue);
+    m_sendList.push_back((vscpEvent *)pEvent);
+    sem_post(&m_semSendQueue);
+    pthread_mutex_unlock(&m_mutexSendQueue);
+    return true;
+}
+
+//////////////////////////////////////////////////////////////////////
+//                Workerthread - CAutomationWorkerTread
+//////////////////////////////////////////////////////////////////////
+
+void *
+workerThread(void *pData)
+{
+    int sock;
+    char devname[IFNAMSIZ + 1];
+    fd_set rdfs;
+    struct timeval tv;
+
+    CAutomation *pObj = (CAutomation *)pData;
+    if (NULL == pObj) {
+        syslog(LOG_ERR, "[vscpl2drv-automation] No object data supplied for worker thread");
+        return NULL;
+    }
+
+#if DEBUG
+    syslog(LOG_DEBUG, "[vscpl2drv-automation] CWriteSocketCanTread: Interface: %s\n", ifname);
+#endif
+
+    while (!pObj->m_bQuit) {
+
+
+
+#ifdef DEBUG
+        syslog(LOG_DEBUG, "using interface name '%s'.\n", ifr.ifr_name);
+#endif
+
+        bool bInnerLoop = true;
+        while (pObj->m_bQuit && bInnerLoop) {
+
+            // FD_ZERO(&rdfs);
+            // FD_SET(sock, &rdfs);
+
+            // tv.tv_sec  = 0;
+            // tv.tv_usec = 5000; // 5ms timeout
+
+            // int ret;
+            // if ((ret = select(sock + 1, &rdfs, NULL, NULL, &tv)) < 0) {
+            //     // Error
+            //     if (ENETDOWN == errno) {
+            //         // We try to get contact with the net
+            //         // again if it goes down
+            //         bInnerLoop = false;
+            //     } else {
+            //         pObj->m_bQuit = true;
+            //     }
+            //     continue;
+            // }
+
+            // if (ret) {
+
+            //     // There is data to read
+
+            //     ret = read(sock, &frame, sizeof(struct can_frame));
+            //     if (ret < 0) {
+            //         if (ENETDOWN == errno) {
+            //             // We try to get contact with the net
+            //             // again if it goes down
+            //             bInnerLoop = false;
+            //             sleep(2);
+            //         } else {
+            //             pObj->m_bQuit = true;
+            //         }
+            //         continue;
+            //     }
+
+            //     // Must be Extended
+            //     if (!(frame.can_id & CAN_EFF_FLAG)) continue;
+
+            //     // Mask of control bits
+            //     frame.can_id &= CAN_EFF_MASK;
+
+            //     vscpEvent *pEvent = new vscpEvent();
+            //     if (NULL != pEvent) {
+
+            //         pEvent->pdata = new uint8_t[frame.len];
+            //         if (NULL == pEvent->pdata) {
+            //             delete pEvent;
+            //             continue;
+            //         }
+
+            //         // GUID will be set to GUID of interface
+            //         // by driver interface with LSB set to nickname
+            //         memset(pEvent->GUID, 0, 16);
+            //         pEvent->GUID[VSCP_GUID_LSB] = frame.can_id & 0xff;
+
+            //         // Set VSCP class
+            //         pEvent->vscp_class =
+            //           vscp_getVSCPclassFromCANALid(frame.can_id);
+
+            //         // Set VSCP type
+            //         pEvent->vscp_type =
+            //           vscp_getVSCPtypeFromCANALid(frame.can_id);
+
+            //         // Copy data if any
+            //         pEvent->sizeData = frame.len;
+            //         if (frame.len) {
+            //             memcpy(pEvent->pdata, frame.data, frame.len);
+            //         }
+
+            //         if (vscp_doLevel2Filter(pEvent, &pObj->m_vscpfilter)) {
+            //             pthread_mutex_lock(&pObj->m_mutexReceiveQueue);
+            //             pObj->m_receiveList.push_back(pEvent);
+            //             sem_post(&pObj->m_semReceiveQueue);
+            //             pthread_mutex_unlock(&pObj->m_mutexReceiveQueue);
+            //         } else {
+            //             vscp_deleteVSCPevent(pEvent);
+            //         }
+            //     }
+
+            // } else {
+
+            //     // Check if there is event(s) to send
+            //     if (pObj->m_sendList.size()) {
+
+            //         // Yes there are data to send
+            //         // So send it out on the CAN bus
+
+            //         pthread_mutex_lock(&pObj->m_mutexSendQueue);
+            //         vscpEvent *pEvent = pObj->m_sendList.front();
+            //         pObj->m_sendList.pop_front();
+            //         pthread_mutex_unlock(&pObj->m_mutexSendQueue);
+
+            //         if (NULL == pEvent) continue;
+
+            //         // Class must be a Level I class or a Level II
+            //         // mirror class
+            //         if (pEvent->vscp_class < 512) {
+            //             frame.can_id = vscp_getCANALidFromVSCPevent(pEvent);
+            //             frame.can_id |= CAN_EFF_FLAG; // Always extended
+            //             if (0 != pEvent->sizeData) {
+            //                 frame.len =
+            //                   (pEvent->sizeData > 8 ? 8 : pEvent->sizeData);
+            //                 memcpy(frame.data, pEvent->pdata, frame.len);
+            //             }
+            //         } else if (pEvent->vscp_class < 1024) {
+            //             pEvent->vscp_class -= 512;
+            //             frame.can_id = vscp_getCANALidFromVSCPevent(pEvent);
+            //             frame.can_id |= CAN_EFF_FLAG; // Always extended
+            //             if (0 != pEvent->sizeData) {
+            //                 frame.len = ((pEvent->sizeData - 16) > 8
+            //                                ? 8
+            //                                : pEvent->sizeData - 16);
+            //                 memcpy(frame.data, pEvent->pdata + 16, frame.len);
+            //             }
+            //         }
+
+            //         // Remove the event
+            //         pthread_mutex_lock(&pObj->m_mutexSendQueue);
+            //         vscp_deleteVSCPevent(pEvent);
+            //         pthread_mutex_unlock(&pObj->m_mutexSendQueue);
+
+            //         // Write the data
+            //         int nbytes = write(sock, &frame, sizeof(struct can_frame));
+
+            //     } // event to send
+
+            // } // No data to read
+
+        } // Inner loop
+
+    } // Outer loop
+
+    return NULL;
 }

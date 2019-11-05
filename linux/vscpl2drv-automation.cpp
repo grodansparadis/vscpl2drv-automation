@@ -77,7 +77,7 @@ _fini()
 
         CAutomation *pif = it->second;
         if (NULL != pif) {
-            pif->doCmdClose();
+            pif->close();
             delete pif;
             pif = NULL;
         }
@@ -294,7 +294,7 @@ VSCPGetVendorString(void)
 extern "C" const char *
 VSCPGetDriverInfo(void)
 {
-    return VSCP_SOCKETCAN_DRIVERINFO;
+    return VSCP_AUTOMATION_DRIVERINFO;
 }
 
 ///////////////////////////////////////////////////////////////////////////////

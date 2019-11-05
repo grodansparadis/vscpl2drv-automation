@@ -9,7 +9,7 @@ AC_INIT( [vscpl2drv-automation], [package_version], [akhe@grodansparadis.com])
 AC_CONFIG_MACRO_DIR(m4)
 
 AC_PREREQ(2.57)
-AC_CONFIG_SRCDIR([linux/socketcan.cpp])
+AC_CONFIG_SRCDIR([linux/vscpl2drv-automation.cpp])
 AC_CONFIG_AUX_DIR(autotools)
 AC_CONFIG_HEADERS([config.h])
 
@@ -33,8 +33,8 @@ AC_CHECK_LIB([pthread], [pthread_create])
 AC_CHECK_LIB([crypto], [MD5_Init])
 AC_CHECK_LIB([m],[sin])
 AC_CHECK_LIB([rt],[clock_gettime])
-AC_CHECK_LIB([ssl], [SSL_free])
-dnl AC_CHECK_LIB([expat], [XML_ParserCreate])
+dnl AC_CHECK_LIB([ssl], [SSL_free])
+AC_CHECK_LIB([expat], [XML_ParserCreate])
 
 # Checks for header files.
 AC_HEADER_DIRENT

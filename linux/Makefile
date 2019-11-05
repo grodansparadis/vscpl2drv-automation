@@ -3,40 +3,40 @@
 # =========================================================================
 
 # Package version
-MAJOR_VERSION=@MAJOR_VERSION@
-MINOR_VERSION=@MINOR_VERSION@
-RELEASE_VERSION=@RELEASE_VERSION@
-BUILD_VERSION=@BUILD_VERSION@
-PACKAGE_VERSION=@PACKAGE_VERSION@
+MAJOR_VERSION=1
+MINOR_VERSION=0
+RELEASE_VERSION=0
+BUILD_VERSION=0
+PACKAGE_VERSION=1.0.0
 
 # STATIC = yes if a static build is requested.
-STATIC=@STATIC@
-VSCP_PROJ_BASE_DIR=@DESTDIR@
+STATIC=no
+VSCP_PROJ_BASE_DIR=/srv/vscp/
 
-prefix = @prefix@
-exec_prefix = @exec_prefix@
-top_srcdir = @top_srcdir@
-top_builddir = @top_builddir@
+prefix = /usr/local
+exec_prefix = ${prefix}
+top_srcdir = ..
+top_builddir = ..
 
-CC = @CC@
-CXX = @CXX@
+CC = gcc
+CXX = g++
 
 
-CFLAGS = -std=c99 @CFLAGS@ -fPIC  -DCBC -I@top_srcdir@ -I../common -I../vscp/src/common -I../vscp/src/vscp/common
-CXXFLAGS = -std=c++11 -D__LINUX__ -fPIC -D_REENTRANT @CXXFLAGS@
-CPPFLAGS = -D__LINUX__ -fPIC @CPPFLAGS@  -fno-var-tracking-assignments -I@top_srcdir@ -I@include@ -I../common \
+CFLAGS = -std=c99  -DOPENSSL_API_1_1 -fPIC  -DCBC -I.. -I../common -I../vscp/src/common -I../vscp/src/vscp/common
+CXXFLAGS = -std=c++11 -D__LINUX__ -fPIC -D_REENTRANT 
+CPPFLAGS = -D__LINUX__ -fPIC   -fno-var-tracking-assignments -I.. -I@include@ -I../common \
 	-I../vscp/src/common -I../vscp/src/vscp/common -I../vscp/src/common/nlohmann
 
-LDFLAGS = @LDFLAGS@
-LIBS = @LIBS@
-EXTRALIBS = @EXTRALIBS@
+LDFLAGS = 
+LIBS = -lexpat -lrt -lm -lcrypto -lpthread -ldl 
+EXTRALIBS = 
 
 DLFLAGS = -g -shared -fPIC
 STRIP = strip
 INSTALL_PROGRAM = ${INSTALL}
 INSTALL_DATA = ${INSTALL} -m 644
-INSTALL_DIR = @INSTALL@ -d
-INSTALL = @INSTALL@
+INSTALL_DIR = /usr/bin/install -c -d
+INSTALL = /usr/bin/install -c
 srcdir = .
 top_srcdir = .
 top_builddir =
@@ -71,10 +71,10 @@ libvscpl2drv-automation.a:	vscpl2drv-automation.so
 	ar rcs libvscpl2drv-automation.a $(SOCKETCAN_OBJECTS)
 
 test:  test.o $(SOCKETCAN_OBJECTS)
-	$(CXX) -o $@ test.o $(SOCKETCAN_OBJECTS) $(LDFLAGS) @LIBS@ $(EXTRALIBS)
+	$(CXX) -o $@ test.o $(SOCKETCAN_OBJECTS) $(LDFLAGS) -lexpat -lrt -lm -lcrypto -lpthread -ldl  $(EXTRALIBS)
 
 vscpl2drv-automation.so: $(SOCKETCAN_OBJECTS)
-	$(CXX) -Wl,-soname,$(LIB_SONAME) -o $@ $(SOCKETCAN_OBJECTS) $(DLFLAGS) @LIBS@ $(EXTRALIBS)
+	$(CXX) -Wl,-soname,$(LIB_SONAME) -o $@ $(SOCKETCAN_OBJECTS) $(DLFLAGS) -lexpat -lrt -lm -lcrypto -lpthread -ldl  $(EXTRALIBS)
 
 automation.o: ../common/automation.cpp ../common/automation.h
 	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -c ../common/automation.cpp -o $@
