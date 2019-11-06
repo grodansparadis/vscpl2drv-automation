@@ -267,10 +267,8 @@ VSCPRead(long handle, vscpEvent *pEvent, unsigned long timeout)
 extern "C" unsigned long
 VSCPGetVersion(void)
 {
-    unsigned long ver = MAJOR_VERSION << 24 |
-        MINOR_VERSION << 16 |
-        RELEASE_VERSION << 8 |
-        BUILD_VERSION;
+    unsigned long ver = MAJOR_VERSION << 24 | MINOR_VERSION << 16 |
+                        RELEASE_VERSION << 8 | BUILD_VERSION;
     return ver;
 }
 
@@ -284,70 +282,4 @@ VSCPGetVendorString(void)
     return VSCP_DLL_VENDOR;
 }
 
-///////////////////////////////////////////////////////////////////////////////
-// VSCPGetDriverInfo
-//
 
-extern "C" const char *
-VSCPGetDriverInfo(void)
-{
-    return VSCP_AUTOMATION_DRIVERINFO;
-}
-
-///////////////////////////////////////////////////////////////////////////////
-//  VSCPGetConfigPageInfo
-//
-
-extern "C" int
-VSCPGetConfigPageInfo(long handle,
-                      unsigned char ordinal,
-                      const char *pReplyObj,
-                      unsigned long *pSize)
-{
-
-    // Not implemented
-    return -1;
-}
-
-///////////////////////////////////////////////////////////////////////////////
-//  VSCPConfigPageUpdate
-//
-
-extern "C" int
-VSCPConfigPageUpdate(long handle,
-                     const char *pUpdateObj,
-                     const char *pReplyObj,
-                     unsigned long *pSize)
-{
-    // Not implemented
-    return -1;
-}
-
-///////////////////////////////////////////////////////////////////////////////
-//  VSCPGetCommandInfo
-//
-
-extern "C" int
-VSCPGetCommandInfo(long handle,
-                   unsigned char ordinal,
-                   const char *pReplyObj,
-                   unsigned long *pSize)
-{
-    // Not implemented
-    return -1;
-}
-
-///////////////////////////////////////////////////////////////////////////////
-//  VSCPExecuteCommand
-//
-
-extern "C" int
-VSCPExecuteCommand(long handle,
-                   const unsigned char type,
-                   const char *pCmdObj,
-                   const char *pReplyObj,
-                   uint32_t *pSize)
-{
-    // Not implemented
-    return -1;
-}

@@ -8,7 +8,7 @@
             "name": "(gdb) Launch",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/src/vscp/daemon/linux/vscpd",
+            "program": "/home/akhe/development/VSCP/vscp/src/vscp/daemon/linux/vscpd",
             "args": ["-s"],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
@@ -22,7 +22,7 @@
                     "ignoreFailures": true
                 }
             ],
-            "preLaunchTask": "build vscpd",
+            "preLaunchTask": "build vscpl2drv-automation",
             "miDebuggerPath": "/usr/bin/gdb"
         }
     ]

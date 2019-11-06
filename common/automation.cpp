@@ -115,6 +115,9 @@ static double AirRefr = 34.0 / 60.0; // atmospheric refraction degrees //
 
 CAutomation::CAutomation(void)
 {
+    m_bDebug = false;
+    m_bQuit  = false;
+
     m_bEnableAutomation = true;
 
     m_zone    = 0;
@@ -145,7 +148,6 @@ CAutomation::CAutomation(void)
 
     m_lastCalculation = vscpdatetime::Now();
 
-    m_bQuit = false;
     vscp_clearVSCPFilter(&m_vscpfilter); // Accept all events
 
     sem_init(&m_semSendQueue, 0, 0);
@@ -178,16 +180,19 @@ CAutomation::~CAutomation(void)
 
     <?xml version = "1.0" encoding = "UTF-8" ?>
     <!-- Version 0.0.1    2019-11-05   -->
-    <config zone="1"
+    <config debug="true|false"
+            guid="FF:FF:FF:FF:FF:FF:FF:FC:88:99:AA:BB:CC:DD:EE:FF"
+            zone="1"
             subzone="2"
             longitude="15.1604167"
             latitude="61.7441833"
             enable-sunrise="true|false"
             enable-sunrise-twilight="true|false"
-            enable-sunset="true|false" />
+            enable-sunset="true|false"
             enable-sunset-twilight="true|false"
+            enable-noon="true|false"
             filter="incoming-filter"
-            mask="incoming-mask" >
+            mask="incoming-mask" />
 */
 
 // ----------------------------------------------------------------------------
@@ -259,6 +264,33 @@ startSetupParser(void *data, const char *name, const char **attr)
                         pObj->disableSunSetTwilightEvent();
                     }
                 }
+            } else if (0 == strcasecmp(attr[i], "enable-noon")) {
+                if (!attribute.empty()) {
+                    vscp_makeUpper(attribute);
+                    if (std::string::npos == attribute.find("TRUE")) {
+                        pObj->enableNoonEvent();
+                    } else {
+                        pObj->disableNoonEvent();
+                    }
+                }
+            } else if (0 == strcasecmp(attr[i], "debug")) {
+                if (!attribute.empty()) {
+                    vscp_makeUpper(attribute);
+                    if (std::string::npos == attribute.find("TRUE")) {
+                        pObj->m_bDebug = true;
+                    } else {
+                        pObj->m_bDebug = false;
+                    }
+                }
+            } else if (0 == strcasecmp(attr[i], "write")) {
+                if (!attribute.empty()) {
+                    vscp_makeUpper(attribute);
+                    if (std::string::npos == attribute.find("TRUE")) {
+                        pObj->m_bWrite = true;
+                    } else {
+                        pObj->m_bWrite = false;
+                    }
+                }
             } else if (0 == strcasecmp(attr[i], "filter")) {
                 if (!attribute.empty()) {
                     if (!vscp_readFilterFromString(&pObj->m_vscpfilter,
@@ -275,6 +307,15 @@ startSetupParser(void *data, const char *name, const char **attr)
                         syslog(LOG_ERR,
                                "[vscpl2drv-automation] Unable to read event "
                                "receive mask.");
+                    }
+                }
+            } else if (0 == strcasecmp(attr[i], "guid")) {
+                if (!attribute.empty()) {
+                    pObj->m_guid.getFromString(attribute);
+                    if (pObj->m_bDebug) {
+                        syslog(LOG_DEBUG,
+                               "[vscpl2drv-automation] GUID=%s",
+                               pObj->m_guid.getAsString().c_str());
                     }
                 }
             }
@@ -332,8 +373,9 @@ CAutomation::open(const std::string &path)
         return false;
     }
 
-    // Close the channel
-    close();
+    if (m_bDebug) {
+        syslog(LOG_DEBUG, "[vscpl2drv-automation] Driver is open.");
+    }
 
     return true;
 }
@@ -345,11 +387,34 @@ CAutomation::open(const std::string &path)
 void
 CAutomation::close(void)
 {
+    if (m_bDebug) {
+        syslog(LOG_DEBUG, "[vscpl2drv-automation] Driver requested to closed.");
+    }
+
     // Do nothing if already terminated
-    if (m_bQuit) return;
+    if (m_bQuit) {
+        syslog(LOG_INFO,
+               "[vscpl2drv-automation] Request to close while already closed.");
+        return;
+    }
 
     m_bQuit = true; // terminate the thread
-    sleep(1);       // Give the thread some time to terminate
+
+    void *res;
+    int rv = pthread_join(m_threadWork, &res);
+    if (0 != rv) {
+        syslog(
+          LOG_ERR, "[vscpl2drv-automation] pthread_join failed error=%d", rv);
+    }
+
+    if (NULL != res) {
+        syslog(LOG_ERR,
+               "[vscpl2drv-automation] Worker thread did not returned NULL");
+    }
+
+    if (m_bDebug) {
+        syslog(LOG_DEBUG, "[vscpl2drv-automation] Driver closed.");
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -498,7 +563,7 @@ CAutomation::convert2HourMinute(double floatTime, int *pHours, int *pMinutes)
 //
 
 void
-CAutomation::calcSun(void)
+CAutomation::doCalc(void)
 {
     double year, month, day, hour;
     double d, lambda;
@@ -624,37 +689,67 @@ CAutomation::calcSun(void)
 }
 
 ///////////////////////////////////////////////////////////////////////////////
+// eventExToReceiveQueue
+//
+
+bool
+CAutomation::eventExToReceiveQueue(vscpEventEx &ex)
+{
+    vscpEvent *pev = new vscpEvent();
+    if (!vscp_convertVSCPfromEx(pev, &ex)) {
+        syslog(LOG_ERR,
+               "[vscpl2drv-automation] Failed to convert event from ex to ev.");
+        vscp_deleteVSCPevent(pev);
+        return false;
+    }
+    if (NULL != pev) {
+        if (vscp_doLevel2Filter(pev, &m_vscpfilter)) {
+            pthread_mutex_lock(&m_mutexReceiveQueue);
+            m_receiveList.push_back(pev);
+            sem_post(&m_semReceiveQueue);
+            pthread_mutex_unlock(&m_mutexReceiveQueue);
+        } else {
+            vscp_deleteVSCPevent(pev);
+        }
+    } else {
+        syslog(LOG_ERR,
+               "[vscpl2drv-automation] Unable to allocate event storage.");
+    }
+    return true;
+}
+
+///////////////////////////////////////////////////////////////////////////////
 // doWork
 //
 
 bool
-CAutomation::doWork(vscpEventEx *pEventEx)
+CAutomation::doWork(void)
 {
+    vscpEventEx ex;
     std::string str;
     vscpdatetime now = vscpdatetime::Now();
 
     // Calculate Sunrise/sunset parameters once a day
     if (!m_bCalulationHasBeenDone && (0 == vscpdatetime::Now().getHour())) {
 
-        calcSun();
+        doCalc();
         m_bCalulationHasBeenDone = true;
 
         int hours, minutes;
         convert2HourMinute(getDayLength(), &hours, &minutes);
 
         // Send VSCP_CLASS2_VSCPD, Type=30/VSCP2_TYPE_VSCPD_NEW_CALCULATION
-        pEventEx->obid =
-          0; // IMPORTANT Must be set by caller before event is sent
-        pEventEx->head      = 0;
-        pEventEx->timestamp = vscp_makeTimeStamp();
-        vscp_setEventExToNow(pEventEx); // Set time to current time
-        pEventEx->vscp_class = VSCP_CLASS2_VSCPD;
-        pEventEx->vscp_type  = VSCP2_TYPE_VSCPD_NEW_CALCULATION;
-        pEventEx->sizeData   = 0;
+        ex.obid      = 0;
+        ex.head      = 0;
+        ex.timestamp = vscp_makeTimeStamp();
+        vscp_setEventExToNow(&ex); // Set time to current time
+        ex.vscp_class = VSCP_CLASS2_VSCPD;
+        ex.vscp_type  = VSCP2_TYPE_VSCPD_NEW_CALCULATION;
+        ex.sizeData   = 0;
+        m_guid.writeGUID(ex.GUID);
 
-        // IMPORTANT - GUID must be set by caller before event is sent
-
-        return true;
+        // Put event in receive queue
+        return eventExToReceiveQueue(ex);
     }
 
     // Trigger for next noon calculation
@@ -673,20 +768,22 @@ CAutomation::doWork(vscpEventEx *pEventEx)
         m_SunriseTime_sent = vscpdatetime::Now();
 
         // Send VSCP_CLASS1_INFORMATION, Type=44/VSCP_TYPE_INFORMATION_SUNRISE
-        pEventEx->obid =
-          0; // IMPORTANT Must be set by caller before event is sent
-        pEventEx->head      = 0;
-        pEventEx->timestamp = vscp_makeTimeStamp();
-        vscp_setEventExToNow(pEventEx); // Set time to current time
-        pEventEx->vscp_class = VSCP_CLASS1_INFORMATION;
-        pEventEx->vscp_type  = VSCP_TYPE_INFORMATION_SUNRISE;
-        pEventEx->sizeData   = 3;
-        // IMPORTANT - GUID must be set by caller before event is sent
-        pEventEx->data[0] = 0;         // index
-        pEventEx->data[1] = m_zone;    // zone
-        pEventEx->data[2] = m_subzone; // subzone
+        ex.obid      = 0;
+        ex.head      = 0;
+        ex.timestamp = vscp_makeTimeStamp();
+        vscp_setEventExToNow(&ex); // Set time to current time
+        ex.vscp_class = VSCP_CLASS1_INFORMATION;
+        ex.vscp_type  = VSCP_TYPE_INFORMATION_SUNRISE;
+        ex.sizeData   = 3;
+        m_guid.writeGUID(ex.GUID);
 
-        return true;
+        ex.data[0] = 0;         // index
+        ex.data[1] = m_zone;    // zone
+        ex.data[2] = m_subzone; // subzone
+
+        // Put event in receive queue
+        return eventExToReceiveQueue(ex);
+        ;
     }
 
     // Civil Twilight Sunrise Time
@@ -701,20 +798,21 @@ CAutomation::doWork(vscpEventEx *pEventEx)
 
         // Send VSCP_CLASS1_INFORMATION,
         // Type=52/VSCP_TYPE_INFORMATION_SUNRISE_TWILIGHT_START
-        pEventEx->obid =
-          0; // IMPORTANT Must be set by caller before event is sent
-        pEventEx->head      = 0;
-        pEventEx->timestamp = vscp_makeTimeStamp();
-        vscp_setEventExToNow(pEventEx); // Set time to current time
-        pEventEx->vscp_class = VSCP_CLASS1_INFORMATION;
-        pEventEx->vscp_type  = VSCP_TYPE_INFORMATION_SUNRISE_TWILIGHT_START;
-        pEventEx->sizeData   = 3;
-        // IMPORTANT - GUID must be set by caller before event is sent
-        pEventEx->data[0] = 0;         // index
-        pEventEx->data[1] = m_zone;    // zone
-        pEventEx->data[2] = m_subzone; // subzone
+        ex.obid      = 0;
+        ex.head      = 0;
+        ex.timestamp = vscp_makeTimeStamp();
+        vscp_setEventExToNow(&ex); // Set time to current time
+        ex.vscp_class = VSCP_CLASS1_INFORMATION;
+        ex.vscp_type  = VSCP_TYPE_INFORMATION_SUNRISE_TWILIGHT_START;
+        ex.sizeData   = 3;
+        m_guid.writeGUID(ex.GUID);
 
-        return true;
+        ex.data[0] = 0;         // index
+        ex.data[1] = m_zone;    // zone
+        ex.data[2] = m_subzone; // subzone
+
+        // Put event in receive queue
+        return eventExToReceiveQueue(ex);
     }
 
     // Sunset Time
@@ -728,20 +826,21 @@ CAutomation::doWork(vscpEventEx *pEventEx)
         m_SunsetTime_sent = vscpdatetime::Now();
 
         // Send VSCP_CLASS1_INFORMATION, Type=45/VSCP_TYPE_INFORMATION_SUNSET
-        pEventEx->obid =
-          0; // IMPORTANT Must be set by caller before event is sent
-        pEventEx->head      = 0;
-        pEventEx->timestamp = vscp_makeTimeStamp();
-        vscp_setEventExToNow(pEventEx); // Set time to current time
-        pEventEx->vscp_class = VSCP_CLASS1_INFORMATION;
-        pEventEx->vscp_type  = VSCP_TYPE_INFORMATION_SUNSET;
-        pEventEx->sizeData   = 3;
-        // IMPORTANT - GUID must be set by caller before event is sent
-        pEventEx->data[0] = 0;         // index
-        pEventEx->data[1] = m_zone;    // zone
-        pEventEx->data[2] = m_subzone; // subzone
+        ex.obid      = 0;
+        ex.head      = 0;
+        ex.timestamp = vscp_makeTimeStamp();
+        vscp_setEventExToNow(&ex); // Set time to current time
+        ex.vscp_class = VSCP_CLASS1_INFORMATION;
+        ex.vscp_type  = VSCP_TYPE_INFORMATION_SUNSET;
+        ex.sizeData   = 3;
+        m_guid.writeGUID(ex.GUID);
 
-        return true;
+        ex.data[0] = 0;         // index
+        ex.data[1] = m_zone;    // zone
+        ex.data[2] = m_subzone; // subzone
+
+        // Put event in receive queue
+        return eventExToReceiveQueue(ex);
     }
 
     // Civil Twilight Sunset Time
@@ -756,20 +855,21 @@ CAutomation::doWork(vscpEventEx *pEventEx)
 
         // Send VSCP_CLASS1_INFORMATION,
         // Type=53/VSCP_TYPE_INFORMATION_SUNSET_TWILIGHT_START
-        pEventEx->obid =
-          0; // IMPORTANT Must be set by caller before event is sent
-        pEventEx->head      = 0;
-        pEventEx->timestamp = vscp_makeTimeStamp();
-        vscp_setEventExToNow(pEventEx); // Set time to current time
-        pEventEx->vscp_class = VSCP_CLASS1_INFORMATION;
-        pEventEx->vscp_type  = VSCP_TYPE_INFORMATION_SUNSET_TWILIGHT_START;
-        pEventEx->sizeData   = 3;
-        // IMPORTANT - GUID must be set by caller before event is sent
-        pEventEx->data[0] = 0;         // index
-        pEventEx->data[1] = m_zone;    // zone
-        pEventEx->data[2] = m_subzone; // subzone
+        ex.obid      = 0;
+        ex.head      = 0;
+        ex.timestamp = vscp_makeTimeStamp();
+        vscp_setEventExToNow(&ex); // Set time to current time
+        ex.vscp_class = VSCP_CLASS1_INFORMATION;
+        ex.vscp_type  = VSCP_TYPE_INFORMATION_SUNSET_TWILIGHT_START;
+        ex.sizeData   = 3;
+        m_guid.writeGUID(ex.GUID);
 
-        return true;
+        ex.data[0] = 0;         // index
+        ex.data[1] = m_zone;    // zone
+        ex.data[2] = m_subzone; // subzone
+
+        // Put event in receive queue
+        return eventExToReceiveQueue(ex);
     }
 
     // Noon Time
@@ -784,20 +884,21 @@ CAutomation::doWork(vscpEventEx *pEventEx)
 
         // Send VSCP_CLASS1_INFORMATION,
         // Type=58/VSCP_TYPE_INFORMATION_CALCULATED_NOON
-        pEventEx->obid =
-          0; // IMPORTANT Must be set by caller before event is sent
-        pEventEx->head      = 0;
-        pEventEx->timestamp = vscp_makeTimeStamp();
-        vscp_setEventExToNow(pEventEx); // Set time to current time
-        pEventEx->vscp_class = VSCP_CLASS1_INFORMATION;
-        pEventEx->vscp_type  = VSCP_TYPE_INFORMATION_CALCULATED_NOON;
-        pEventEx->sizeData   = 3;
-        // IMPORTANT - GUID must be set by caller before event is sent
-        pEventEx->data[0] = 0;         // index
-        pEventEx->data[1] = m_zone;    // zone
-        pEventEx->data[2] = m_subzone; // subzone
+        ex.obid      = 0;
+        ex.head      = 0;
+        ex.timestamp = vscp_makeTimeStamp();
+        vscp_setEventExToNow(&ex); // Set time to current time
+        ex.vscp_class = VSCP_CLASS1_INFORMATION;
+        ex.vscp_type  = VSCP_TYPE_INFORMATION_CALCULATED_NOON;
+        ex.sizeData   = 3;
+        m_guid.writeGUID(ex.GUID);
 
-        return true;
+        ex.data[0] = 0;         // index
+        ex.data[1] = m_zone;    // zone
+        ex.data[2] = m_subzone; // subzone
+
+        // Put event in receive queue
+        return eventExToReceiveQueue(ex);
     }
 
     return false;
@@ -826,16 +927,14 @@ CAutomation::addEvent2SendQueue(const vscpEvent *pEvent)
 void *
 workerThread(void *pData)
 {
-    int sock;
-    char devname[IFNAMSIZ + 1];
     fd_set rdfs;
     struct timeval tv;
 
     CAutomation *pObj = (CAutomation *)pData;
     if (NULL == pObj) {
-        syslog(
-          LOG_ERR,
-          "[vscpl2drv-automation] No object data supplied for worker thread");
+        syslog(LOG_ERR,
+               "[vscpl2drv-automation] No object data supplied for worker "
+               "thread. Terminating");
         return NULL;
     }
 
@@ -845,147 +944,47 @@ workerThread(void *pData)
            ifname);
 #endif
 
+    // Do work at least once a second. Check incoming
+    // event right away.
     while (!pObj->m_bQuit) {
 
-#ifdef DEBUG
-        syslog(LOG_DEBUG, "using interface name '%s'.\n", ifr.ifr_name);
-#endif
+        // Do the automation work
+        pObj->doWork();
 
-        bool bInnerLoop = true;
-        while (pObj->m_bQuit && bInnerLoop) {
+        // Check for incoming event
+        struct timespec ts;
+        ts.tv_sec = 1;
+        ts.tv_nsec = 0;
+        if ( -1 == sem_timedwait(&pObj->m_semSendQueue, &ts ) ) {
+            if ( EINTR == errno ) {
+                syslog(LOG_INFO, "[vscpl2drv-automation] Interrupted by a signal handler. Terminating.");
+                pObj->m_bQuit = true;
+            }
+            else if ( EINVAL == errno ) {
+                syslog(LOG_ERR, "[vscpl2drv-automation] Invalid semaphore. Terminating.");
+                pObj->m_bQuit = true;
+            }
+        }
 
-            // FD_ZERO(&rdfs);
-            // FD_SET(sock, &rdfs);
+        // Check if there is event(s) for us
+        if (pObj->m_sendList.size()) {
 
-            // tv.tv_sec  = 0;
-            // tv.tv_usec = 5000; // 5ms timeout
+            // Yes there are event/(s) in the queue
+            // Handle
 
-            // int ret;
-            // if ((ret = select(sock + 1, &rdfs, NULL, NULL, &tv)) < 0) {
-            //     // Error
-            //     if (ENETDOWN == errno) {
-            //         // We try to get contact with the net
-            //         // again if it goes down
-            //         bInnerLoop = false;
-            //     } else {
-            //         pObj->m_bQuit = true;
-            //     }
-            //     continue;
-            // }
+            pthread_mutex_lock(&pObj->m_mutexSendQueue);
+            vscpEvent *pEvent = pObj->m_sendList.front();
+            pObj->m_sendList.pop_front();
+            pthread_mutex_unlock(&pObj->m_mutexSendQueue);
 
-            // if (ret) {
+            if (NULL == pEvent) continue;
 
-            //     // There is data to read
+            // Remove the event
+            pthread_mutex_lock(&pObj->m_mutexSendQueue);
+            vscp_deleteVSCPevent(pEvent);
+            pthread_mutex_unlock(&pObj->m_mutexSendQueue);
 
-            //     ret = read(sock, &frame, sizeof(struct can_frame));
-            //     if (ret < 0) {
-            //         if (ENETDOWN == errno) {
-            //             // We try to get contact with the net
-            //             // again if it goes down
-            //             bInnerLoop = false;
-            //             sleep(2);
-            //         } else {
-            //             pObj->m_bQuit = true;
-            //         }
-            //         continue;
-            //     }
-
-            //     // Must be Extended
-            //     if (!(frame.can_id & CAN_EFF_FLAG)) continue;
-
-            //     // Mask of control bits
-            //     frame.can_id &= CAN_EFF_MASK;
-
-            //     vscpEvent *pEvent = new vscpEvent();
-            //     if (NULL != pEvent) {
-
-            //         pEvent->pdata = new uint8_t[frame.len];
-            //         if (NULL == pEvent->pdata) {
-            //             delete pEvent;
-            //             continue;
-            //         }
-
-            //         // GUID will be set to GUID of interface
-            //         // by driver interface with LSB set to nickname
-            //         memset(pEvent->GUID, 0, 16);
-            //         pEvent->GUID[VSCP_GUID_LSB] = frame.can_id & 0xff;
-
-            //         // Set VSCP class
-            //         pEvent->vscp_class =
-            //           vscp_getVSCPclassFromCANALid(frame.can_id);
-
-            //         // Set VSCP type
-            //         pEvent->vscp_type =
-            //           vscp_getVSCPtypeFromCANALid(frame.can_id);
-
-            //         // Copy data if any
-            //         pEvent->sizeData = frame.len;
-            //         if (frame.len) {
-            //             memcpy(pEvent->pdata, frame.data, frame.len);
-            //         }
-
-            //         if (vscp_doLevel2Filter(pEvent, &pObj->m_vscpfilter)) {
-            //             pthread_mutex_lock(&pObj->m_mutexReceiveQueue);
-            //             pObj->m_receiveList.push_back(pEvent);
-            //             sem_post(&pObj->m_semReceiveQueue);
-            //             pthread_mutex_unlock(&pObj->m_mutexReceiveQueue);
-            //         } else {
-            //             vscp_deleteVSCPevent(pEvent);
-            //         }
-            //     }
-
-            // } else {
-
-            //     // Check if there is event(s) to send
-            //     if (pObj->m_sendList.size()) {
-
-            //         // Yes there are data to send
-            //         // So send it out on the CAN bus
-
-            //         pthread_mutex_lock(&pObj->m_mutexSendQueue);
-            //         vscpEvent *pEvent = pObj->m_sendList.front();
-            //         pObj->m_sendList.pop_front();
-            //         pthread_mutex_unlock(&pObj->m_mutexSendQueue);
-
-            //         if (NULL == pEvent) continue;
-
-            //         // Class must be a Level I class or a Level II
-            //         // mirror class
-            //         if (pEvent->vscp_class < 512) {
-            //             frame.can_id = vscp_getCANALidFromVSCPevent(pEvent);
-            //             frame.can_id |= CAN_EFF_FLAG; // Always extended
-            //             if (0 != pEvent->sizeData) {
-            //                 frame.len =
-            //                   (pEvent->sizeData > 8 ? 8 : pEvent->sizeData);
-            //                 memcpy(frame.data, pEvent->pdata, frame.len);
-            //             }
-            //         } else if (pEvent->vscp_class < 1024) {
-            //             pEvent->vscp_class -= 512;
-            //             frame.can_id = vscp_getCANALidFromVSCPevent(pEvent);
-            //             frame.can_id |= CAN_EFF_FLAG; // Always extended
-            //             if (0 != pEvent->sizeData) {
-            //                 frame.len = ((pEvent->sizeData - 16) > 8
-            //                                ? 8
-            //                                : pEvent->sizeData - 16);
-            //                 memcpy(frame.data, pEvent->pdata + 16,
-            //                 frame.len);
-            //             }
-            //         }
-
-            //         // Remove the event
-            //         pthread_mutex_lock(&pObj->m_mutexSendQueue);
-            //         vscp_deleteVSCPevent(pEvent);
-            //         pthread_mutex_unlock(&pObj->m_mutexSendQueue);
-
-            //         // Write the data
-            //         int nbytes = write(sock, &frame, sizeof(struct
-            //         can_frame));
-
-            //     } // event to send
-
-            // } // No data to read
-
-        } // Inner loop
+        } // event to send
 
     } // Outer loop
 

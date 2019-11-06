@@ -124,12 +124,22 @@ class CAutomation
     /*!
         Calculate Sunset/Sunrice etc
     */
-    void calcSun(void);
+    void doCalc(void);
+
+    /*!
+        Put event on receive queue and signal
+        that a new event is available
+
+        @param ex Event to send
+        @return true on success, false on failure
+    */
+    bool
+    eventExToReceiveQueue(vscpEventEx& ex);
 
     /*!
         Do automation work
     */
-    bool doWork(vscpEventEx *pEventEx);
+    bool doWork(void);
 
     /// Setter for zone
     void setZone(uint8_t zone) { m_zone = zone; }
@@ -246,11 +256,17 @@ class CAutomation
 
   public:
 
+    /// Debug flag set in config
+    bool m_bDebug;
+
     /// Run flag
     bool m_bQuit;
 
     /// Incoming filter
     vscpEventFilter m_vscpfilter;
+
+    // Driver GUID - should be unique
+    cguid m_guid;
 
     /// Get GUID for this interface.
     cguid m_ifguid;
