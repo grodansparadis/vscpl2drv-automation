@@ -32,7 +32,7 @@ section on the following format
 
 ```xml
 <!-- Level II automation -->
-<driver enable="false"
+<driver enable="true"
     name="automation"
     path="/usr/bin/vscpl2drv-automation.so"
     guid="FF:FF:FF:FF:FF:FF:FF:FC:88:99:AA:BB:CC:DD:EE:FF"
@@ -147,7 +147,19 @@ The default filter/mask pair means that all events are received by the driver.
 See information from Linux. The only difference is the disk location from where configuration data is fetched.
 
 ## Install the driver on Linux
-tbd
+You can install the driver using the debian package with
+
+> sudo dpkg -i vscpl2drv-automation
+
+the driver will be installed to /usr/lib
+
+After installing the driver you need to add it to the vscpd.conf file (/etc/vscp/vscpd.conf). Se the *configuration* section above.
+
+You also need to set up a configuration file for the driver. If you don't need to dynamically edit the content of this file a good and safe location for it is in the */etc/vscp/* folder alongside the VSCP daemon configuration file.
+
+If you need to do dynamic configuration we recommend that you create the file in the */var/vscp/vscpl2drv-automation*
+
+A sample configuration file is make available in */usr/share/vscpl2drv-automation* during installation.
 
 ## Install the driver on Windows
 tbd
