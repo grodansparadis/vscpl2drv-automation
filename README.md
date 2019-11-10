@@ -144,7 +144,7 @@ Read the vscpd manual for more information about how filter/masks work.
 The default filter/mask pair means that all events are received by the driver.
 
 ### Windows
-See information from Linux. The only differens is the disk location from where configuration data is fetched.
+See information from Linux. The only difference is the disk location from where configuration data is fetched.
 
 ## Install the driver on Linux
 tbd
@@ -183,25 +183,27 @@ There is however other possibilities built into the driver.
 
 Send a High Level Data event to the driver with the following payload
 
-```json
-{
-    "command" : "readvar",
-    "name"    : "sunset-time"
+```xml
+<vscp-cmd  op = "readvar"
+           name = "sunset-time"
+           full = "false"
 }
 ```
 
 response will be
 
-```json
-{
-    "result" : "ok",
-    "type"   : 15,
-    "value"  : "BASE64(HH:MM:SS)"
+```xml
+<vscp-resp op="readvar"
+           result="true"
+           type="15"
+           value="BASE64(HH:MM:SS)"
+           ---- more attribytes for full="true"
 }
 ```
+
 where
 
-**result** is 'ok' for success and 'failure' if not.
+**result** is 'true' for success and 'false' if not.
 
 **type** is **15** indicating that this is a remote variable with a value that should be interpreted as a time.
 
@@ -209,38 +211,35 @@ where
 
 You can read the following remote variable values from the vscpl2drv-automation driver
 
-| Variabl6e | Type | Description |
+| Variable | Type | Description |
 | -------- | :----: | ----------------- |
 | sunset | 15 (TIME) | A BASE65 encoded time HH:MM:SS. |
 | sunrise | 15 (TIME)  | A BASE65 encoded time HH:MM:SS. |
 | sunsetTwilight | 15 (TIME)  | A BASE65 encoded time HH:MM:SS. |
 | sunriseTwilight | 15 (TIME)  | A BASE65 encoded time HH:MM:SS. |
 | noon | 15 (TIME)  | A BASE65 encoded time HH:MM:SS. |
-| sentSunset | 13 (DATETIME) | A BASE65 encoded time HH:MM:SS. |
-| sentSunrise | 13 (DATETIME)  | A BASE65 encoded time HH:MM:SS. |
-| sentSunset-twilight | 13 (DATETIME)  | A BASE65 encoded time HH:MM:SS. |
-| sentSunrise-twilight | 13 (DATETIME)  | A BASE65 encoded time HH:MM:SS. |
-| sentNoon | 15 (TIME)  | A BASE65 encoded time HH:MM:SS. |
+| sentSunset | 13 (DATETIME) | A BASE65 encoded datetime YYYY-MM-DDTHH:MM:SS. |
+| sentSunrise | 13 (DATETIME)  | A BASE65 encoded datetime YYYY-MM-DDTHH:MM:SS. |
+| sentSunset-twilight | 13 (DATETIME)  | A BASE65 datetime YYYY-MM-DDTHH:MM:SS. |
+| sentSunrise-twilight | 13 (DATETIME)  | datetime YYYY-MM-DDTHH:MM:SS. |
+| sentNoon | 13 (DATETIME)  | A BASE65 encoded datetime YYYY-MM-DDTHH:MM:SS. |
 | enableSunset | 2 (BOOL)  | rw A BASE65 encoded boolean. |
-| enableSunrise | 2 (BOOL) | rw A BASE65 encoded time boolean. |
-| enableSunset_twilight | rw 2 (BOOL) | A BASE65 encoded boolean. |
-| enable-sunrise_twilight | rw 2 (BOOL) | A BASE65 encoded boolean. |
+| enableSunrise | 2 (BOOL) | rw A BASE65 encoded boolean. |
+| enableSunset_twilight | rw 2 (BOOL) | rw A BASE65 encoded boolean. |
+| enable-sunrise_twilight | rw 2 (BOOL) | rw A BASE65 encoded boolean. |
 | enableNoon | 2 (BOOL) | rw A BASE65 encoded boolean. |
 | longitude | 5 (DOUBLE) | rw A BASE65 encoded floating point value. |
 | latitude | 5 (DOUBLE) | rw A BASE65 encoded encoded floating point value. |
-| zone | 3 (INT) | rw A BASE65 encoded integer point value. |
-| subzone | 3 (INT) | rw A BASE65 encoded integer point value. |
+| zone | 3 (INT) | rw A BASE65 encoded integer value. |
+| subzone | 3 (INT) | rw A BASE65 encoded integer value. |
 | daylength | 5 (DOUBLE) | rw A BASE65 encoded encoded floating point value. |
 | declination | 5 (DOUBLE) | rw A BASE65 encoded encoded floating point value. |
 | SunMaxAltitude | 5 (DOUBLE) | rw A BASE65 encoded encoded floating point value. |
 | LastCalculation | 5 (DOUBLE) | rw A BASE65 encoded encoded floating point value. |
 
 
-
-
-
 | Command | Description |
 | ------- | ----------- |
 | calculate | Do a new calculation now |
-| save | Save configuration to disk |
+| save | Save configuration to disk (if writable) |
 | load | Load configuration from disk |
