@@ -47,8 +47,56 @@
 
 class CControlObject;
 
+#define HLO_OP_NOOP         0    // No operation
+#define HLO_OP_READ_VAR     1    // Read variable
+#define HLO_OP_WRITE_VAR    2    // Write variable
+#define HLO_OP_SAVE         3    // Save configuration
+#define HLO_OP_LOAD         4    // Load configuration
+#define HLO_OP_CALCULATE    5    // Do astro. calculations
+#define HLO_OP_UNKNOWN      255  // Unknow command
+
+#define HLO_CMD_REPLY_TEMPLATE  "<vscp-resp op=\"%s\" "\
+    "name=\"%s\" "\
+    "result=\"%s\" "\
+    "description=\"%s\" />"
+
+#define HLO_READ_VAR_REPLY_TEMPLATE  "<vscp-resp op=\"vscp-readvar\" "\
+    "name=\"%s \" "\
+    "result=\"%s \" "\
+    "type=%d "\
+    "value=\"%s\" />"
+
 ///////////////////////////////////////////////////////////////////////////////
-// Class that holds one VSCP vautomation
+// VSCP automation HLO object
+//
+
+class CHLO
+{
+
+  public:
+    /// Constructor
+    CHLO(void);
+
+    // Destructor
+    virtual ~CHLO(void);
+
+    // ---------------------------------------
+
+    // HLO operation
+    uint8_t m_op;
+
+    // HLO name
+    std::string m_name;
+
+    // HLO value
+    std::string m_value;
+
+    // For VSCP remote variables full format
+    bool m_bFull;
+};
+
+///////////////////////////////////////////////////////////////////////////////
+// Class that holds one VSCP automation object
 //
 
 class CAutomation
@@ -141,6 +189,26 @@ class CAutomation
     */
     bool doWork(void);
 
+    /*!
+        Parse HLO
+
+        @param size Size of HLO object 0-511 bytes
+        @param buf Pointer to buf containing HLO
+        @param phlo Pointer to HLO taht will get parsed data
+        @return true on successfull parsing, false otherwise
+    */
+    bool parseHLO(uint16_t size, uint8_t *buf, CHLO *phlo);
+
+    /*!
+        Handle High Level Object events
+
+        Note: The supplied event is deleted by the calling
+        routine.
+        @param pEvent Pointer to HLO event.
+        @return true on successful parsing, false otherwise
+    */
+    bool handleHLO(vscpEvent *pEvent);
+
     /// Setter for zone
     void setZone(uint8_t zone) { m_zone = zone; }
 
@@ -152,6 +220,18 @@ class CAutomation
 
     /// getter for subzone
     uint8_t getSubzone(void) { return m_subzone; };
+
+    /// setter for m_bWrite
+    void enableWrite(bool bEnable = true) { m_bWrite = bEnable; };
+
+    /// setter for m_bWrite
+    void disableWrite(void) { m_bWrite = false; };
+
+    /// setter for m_bCalculatedNoonEvent
+    void enableCalculatedNoonEvent(bool bEnable = true) { m_bCalculatedNoonEvent = bEnable; };
+
+    /// setter for m_bCalculatedNoonEvent
+    void disableCalculatedNoonEvent(void) { m_bCalculatedNoonEvent = false; };
 
     /// setter for bSunRiseEvent
     void enableSunRiseEvent(bool bEnable = true) { m_bSunRiseEvent = bEnable; };
@@ -201,28 +281,30 @@ class CAutomation
     {
         return m_civilTwilightSunriseTime;
     };
-    vscpdatetime &getCivilTwilightSunriseTimeSent(void)
+    vscpdatetime &getSentCivilTwilightSunriseTime(void)
     {
         return m_civilTwilightSunriseTime_sent;
     };
 
+    vscpdatetime &getCalulatedNoonTime(void) { return m_noonTime; };
+
     vscpdatetime &getSunriseTime(void) { return m_SunriseTime; };
-    vscpdatetime &getSunriseTimeSent(void) { return m_SunriseTime_sent; };
+    vscpdatetime &getSentSunriseTime(void) { return m_SunriseTime_sent; };
 
     vscpdatetime &getSunsetTime(void) { return m_SunsetTime; };
-    vscpdatetime &getSunsetTimeSent(void) { return m_SunsetTime_sent; };
+    vscpdatetime &getSentSunsetTime(void) { return m_SunsetTime_sent; };
 
     vscpdatetime &getCivilTwilightSunsetTime(void)
     {
         return m_civilTwilightSunsetTime;
     };
-    vscpdatetime &getCivilTwilightSunsetTimeSent(void)
+    vscpdatetime &getSentCivilTwilightSunsetTime(void)
     {
         return m_civilTwilightSunsetTime_sent;
     };
 
     vscpdatetime &getNoonTime(void) { return m_noonTime; };
-    vscpdatetime &getNoonTimeSent(void) { return m_noonTime_sent; };
+    vscpdatetime &getSentNoonTime(void) { return m_noonTime_sent; };
 
     double getLongitude(void) { return m_longitude; };
     double getLatitude(void) { return m_latitude; };
@@ -234,16 +316,16 @@ class CAutomation
     double getSunMaxAltitude(void) { return m_SunMaxAltitude; };
 
     bool isSendSunriseEvent(void) { return m_bSunRiseEvent; };
-    vscpdatetime &getSunriseEventSent(void) { return m_SunriseTime_sent; };
+    vscpdatetime &getSentSunriseEvent(void) { return m_SunriseTime_sent; };
 
     bool isSendSunriseTwilightEvent(void) { return m_bSunRiseTwilightEvent; };
-    vscpdatetime &getSunriseTwilightEventSent(void)
+    vscpdatetime &getSentSunriseTwilightEvent(void)
     {
         return m_civilTwilightSunriseTime_sent;
     };
 
     bool isSendSunsetEvent(void) { return m_bSunSetEvent; };
-    vscpdatetime &getSunsetEventSent(void) { return m_SunsetTime_sent; };
+    vscpdatetime &getSentSunsetEvent(void) { return m_SunsetTime_sent; };
 
     bool isSendSunsetTwilightEvent(void) { return m_bSunSetTwilightEvent; };
     vscpdatetime &getSunsetTwilightEventSent(void)
@@ -252,12 +334,15 @@ class CAutomation
     };
 
     bool isSendCalculatedNoonEvent(void) { return m_bCalculatedNoonEvent; };
-    vscpdatetime &getCalculatedNoonEventSent(void) { return m_noonTime_sent; };
+    vscpdatetime &getSentCalculatedNoonEvent(void) { return m_noonTime_sent; };
 
   public:
 
     /// Debug flag set in config
     bool m_bDebug;
+
+    /// True if configuration can be saved (written)
+    bool m_bWrite;
 
     /// Run flag
     bool m_bQuit;
@@ -326,13 +411,18 @@ class CAutomation
 
     /*!
         Enable/disable the CLASS1.INFORMATION, Type=53 (Civil sunset twilight
-       time) to be sent. Longitude, latitude and time zone must be set for this
-       to work correctly.
+        time) to be sent. Longitude, latitude and time zone must be set for this
+        to work correctly.
     */
     bool m_bSunSetTwilightEvent;
 
+
+    bool m_bNoonEvent;
+
     /*!
-        Enable/Disable calculated noon event
+        Enable/disable the CLASS1.INFORMATION, Type=58 (Calculated Noon) to be sent.
+        Longitude, latitude and time zone must be set for this
+        to work correctly.
     */
     bool m_bCalculatedNoonEvent;
 

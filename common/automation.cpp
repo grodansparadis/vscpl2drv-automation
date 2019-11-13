@@ -73,7 +73,7 @@
 #include "automation.h"
 
 // Buffer for XML parser
-#define XML_BUFF_SIZE 10000
+#define XML_BUFF_SIZE 30000
 
 // Forward declaration
 void *
@@ -113,6 +113,24 @@ static double AirRefr = 34.0 / 60.0; // atmospheric refraction degrees //
 // Constructor
 //
 
+CHLO::CHLO(void)
+{
+    m_op    = HLO_OP_NOOP;
+    m_bFull = false;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// Constructor
+//
+
+CHLO::~CHLO(void) {}
+
+// ----------------------------------------------------------------------------
+
+///////////////////////////////////////////////////////////////////////////////
+// Constructor
+//
+
 CAutomation::CAutomation(void)
 {
     m_bDebug = false;
@@ -122,6 +140,9 @@ CAutomation::CAutomation(void)
 
     m_zone    = 0;
     m_subzone = 0;
+
+    // Not possible to save configuration by default
+    m_bWrite = false;
 
     // Take me the freedom to use my own place as reference
     m_longitude = 15.1604167; // Home sweet home
@@ -155,6 +176,9 @@ CAutomation::CAutomation(void)
 
     pthread_mutex_init(&m_mutexSendQueue, NULL);
     pthread_mutex_init(&m_mutexReceiveQueue, NULL);
+
+    // Do initial calculations
+    doCalc();
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -181,6 +205,7 @@ CAutomation::~CAutomation(void)
     <?xml version = "1.0" encoding = "UTF-8" ?>
     <!-- Version 0.0.1    2019-11-05   -->
     <config debug="true|false"
+            write="true|false"
             guid="FF:FF:FF:FF:FF:FF:FF:FC:88:99:AA:BB:CC:DD:EE:FF"
             zone="1"
             subzone="2"
@@ -231,7 +256,7 @@ startSetupParser(void *data, const char *name, const char **attr)
             } else if (0 == strcasecmp(attr[i], "enable-sunrise")) {
                 if (!attribute.empty()) {
                     vscp_makeUpper(attribute);
-                    if (std::string::npos == attribute.find("TRUE")) {
+                    if (std::string::npos != attribute.find("TRUE")) {
                         pObj->enableSunRiseEvent();
                     } else {
                         pObj->disableSunRiseEvent();
@@ -240,7 +265,7 @@ startSetupParser(void *data, const char *name, const char **attr)
             } else if (0 == strcasecmp(attr[i], "enable-sunrise-twilight")) {
                 if (!attribute.empty()) {
                     vscp_makeUpper(attribute);
-                    if (std::string::npos == attribute.find("TRUE")) {
+                    if (std::string::npos != attribute.find("TRUE")) {
                         pObj->enableSunSetEvent();
                     } else {
                         pObj->disableSunSetEvent();
@@ -249,7 +274,7 @@ startSetupParser(void *data, const char *name, const char **attr)
             } else if (0 == strcasecmp(attr[i], "enable-sunset")) {
                 if (!attribute.empty()) {
                     vscp_makeUpper(attribute);
-                    if (std::string::npos == attribute.find("TRUE")) {
+                    if (std::string::npos != attribute.find("TRUE")) {
                         pObj->enableSunRiseTwilightEvent();
                     } else {
                         pObj->disableSunRiseTwilightEvent();
@@ -258,7 +283,7 @@ startSetupParser(void *data, const char *name, const char **attr)
             } else if (0 == strcasecmp(attr[i], "enable-sunset-twilight")) {
                 if (!attribute.empty()) {
                     vscp_makeUpper(attribute);
-                    if (std::string::npos == attribute.find("TRUE")) {
+                    if (std::string::npos != attribute.find("TRUE")) {
                         pObj->enableSunSetTwilightEvent();
                     } else {
                         pObj->disableSunSetTwilightEvent();
@@ -267,16 +292,16 @@ startSetupParser(void *data, const char *name, const char **attr)
             } else if (0 == strcasecmp(attr[i], "enable-noon")) {
                 if (!attribute.empty()) {
                     vscp_makeUpper(attribute);
-                    if (std::string::npos == attribute.find("TRUE")) {
-                        pObj->enableNoonEvent();
+                    if (std::string::npos != attribute.find("TRUE")) {
+                        pObj->enableCalculatedNoonEvent();
                     } else {
-                        pObj->disableNoonEvent();
+                        pObj->disableCalculatedNoonEvent();
                     }
                 }
             } else if (0 == strcasecmp(attr[i], "debug")) {
                 if (!attribute.empty()) {
                     vscp_makeUpper(attribute);
-                    if (std::string::npos == attribute.find("TRUE")) {
+                    if (std::string::npos != attribute.find("TRUE")) {
                         pObj->m_bDebug = true;
                     } else {
                         pObj->m_bDebug = false;
@@ -285,10 +310,10 @@ startSetupParser(void *data, const char *name, const char **attr)
             } else if (0 == strcasecmp(attr[i], "write")) {
                 if (!attribute.empty()) {
                     vscp_makeUpper(attribute);
-                    if (std::string::npos == attribute.find("TRUE")) {
-                        pObj->m_bWrite = true;
+                    if (std::string::npos != attribute.find("TRUE")) {
+                        pObj->enableWrite();
                     } else {
-                        pObj->m_bWrite = false;
+                        pObj->disableWrite();
                     }
                 }
             } else if (0 == strcasecmp(attr[i], "filter")) {
@@ -340,24 +365,28 @@ endSetupParser(void *data, const char *name)
 bool
 CAutomation::open(const std::string &path)
 {
-    char buf[XML_BUFF_SIZE];
-
-    // XML setup
-    std::string strSetupXML;
+    FILE *fp;
 
     // Read configuration file
+    fp = fopen(path.c_str(), "r");
+    if (NULL == fp) {
+        syslog(LOG_ERR,
+               "[vscpl2drv-automation] Failed to open configuration file [%s]",
+               path.c_str());
+        return false;
+    }
 
     XML_Parser xmlParser = XML_ParserCreate("UTF-8");
     XML_SetUserData(xmlParser, this);
     XML_SetElementHandler(xmlParser, startSetupParser, endSetupParser);
 
     int bytes_read;
-    void *buff = XML_GetBuffer(xmlParser, XML_BUFF_SIZE);
+    void *buf = XML_GetBuffer(xmlParser, XML_BUFF_SIZE);
 
-    strncpy((char *)buf, strSetupXML.c_str(), strSetupXML.length());
+    size_t file_size = 0;
+    file_size        = fread(buf, sizeof(char), XML_BUFF_SIZE, fp);
 
-    bytes_read = strSetupXML.length();
-    if (!XML_ParseBuffer(xmlParser, bytes_read, bytes_read == 0)) {
+    if (!XML_ParseBuffer(xmlParser, file_size, file_size == 0)) {
         syslog(LOG_ERR, "[vscpl2drv-automation] Failed parse XML setup.");
         XML_ParserFree(xmlParser);
         return false;
@@ -688,6 +717,246 @@ CAutomation::doCalc(void)
     m_noonTime.setMinute(intMinute);
 }
 
+// ----------------------------------------------------------------------------
+
+int depth_hlo_parser = 0;
+
+void
+startHLOParser(void *data, const char *name, const char **attr)
+{
+    CHLO *pObj = (CHLO *)data;
+    if (NULL == pObj) return;
+
+    if ((0 == strcmp(name, "vscp-cmd")) && (0 == depth_setup_parser)) {
+
+        for (int i = 0; attr[i]; i += 2) {
+
+            std::string attribute = attr[i + 1];
+            vscp_trim(attribute);
+
+            if (0 == strcasecmp(attr[i], "op")) {
+                if (!attribute.empty()) {
+                    pObj->m_op = vscp_readStringValue(attribute);
+                    vscp_makeUpper(attribute);
+                    if (attribute == "VSCP-NOOP") {
+                        pObj->m_op = HLO_OP_NOOP;
+                    } else if (attribute == "VSCP-READVAR") {
+                        pObj->m_op = HLO_OP_READ_VAR;
+                    } else if (attribute == "VSCP-WRITEVAR") {
+                        pObj->m_op = HLO_OP_WRITE_VAR;
+                    } else if (attribute == "VSCP-LOAD") {
+                        pObj->m_op = HLO_OP_LOAD;
+                    } else if (attribute == "VSCP-SAVE") {
+                        pObj->m_op = HLO_OP_SAVE;
+                    } else if (attribute == "CALCULATE") {
+                        pObj->m_op = HLO_OP_SAVE;
+                    } else {
+                        pObj->m_op = HLO_OP_UNKNOWN;
+                    }
+                }
+            } else if (0 == strcasecmp(attr[i], "name")) {
+                if (!attribute.empty()) {
+                    vscp_makeUpper(attribute);
+                    pObj->m_name = attribute;
+                }
+            } else if (0 == strcasecmp(attr[i], "value")) {
+                if (!attribute.empty()) {
+                    pObj->m_value = attribute;
+                }
+            } else if (0 == strcasecmp(attr[i], "full")) {
+                if (!attribute.empty()) {
+                    vscp_makeUpper(attribute);
+                    if ("TRUE" == attribute) {
+                        pObj->m_bFull = true;
+                    } else {
+                        pObj->m_bFull = false;
+                    }
+                }
+            }
+        }
+    }
+
+    depth_hlo_parser++;
+}
+
+void
+endHLOParser(void *data, const char *name)
+{
+    depth_hlo_parser--;
+}
+
+// ----------------------------------------------------------------------------
+
+///////////////////////////////////////////////////////////////////////////////
+// parseHLO
+//
+
+bool
+CAutomation::parseHLO(uint16_t size, uint8_t *inbuf, CHLO *phlo)
+{
+    // Check pointers
+    if (NULL == inbuf) {
+        syslog(
+          LOG_ERR,
+          "[vscpl2drv-automation] HLO parser: HLO in-buffer pointer is NULL.");
+        return false;
+    }
+
+    if (NULL == phlo) {
+        syslog(LOG_ERR,
+               "[vscpl2drv-automation] HLO parser: HLO obj pointer is NULL.");
+        return false;
+    }
+
+    if (!size) {
+        syslog(LOG_ERR,
+               "[vscpl2drv-automation] HLO parser: HLO buffer size is zero.");
+        return false;
+    }
+
+    XML_Parser xmlParser = XML_ParserCreate("UTF-8");
+    XML_SetUserData(xmlParser, this);
+    XML_SetElementHandler(xmlParser, startHLOParser, endHLOParser);
+
+    int bytes_read;
+    void *buf = XML_GetBuffer(xmlParser, XML_BUFF_SIZE);
+
+    // Copy in the HLO object
+    memcpy(buf, inbuf, size);
+
+    if (!XML_ParseBuffer(xmlParser, size, size == 0)) {
+        syslog(LOG_ERR, "[vscpl2drv-automation] Failed parse XML setup.");
+        XML_ParserFree(xmlParser);
+        return false;
+    }
+
+    XML_ParserFree(xmlParser);
+
+    return true;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// handleHLO
+//
+
+bool
+CAutomation::handleHLO(vscpEvent *pEvent)
+{
+    char buf[512]; // Working buffer
+    vscpEventEx ex;
+
+    // Check pointers
+    if (NULL == pEvent) {
+        syslog(LOG_ERR,
+               "[vscpl2drv-automation] HLO handler: NULL event pointer.");
+        return false;
+    }
+
+    CHLO hlo;
+    if (!parseHLO(pEvent->sizeData, pEvent->pdata, &hlo)) {
+        syslog(LOG_ERR, "[vscpl2drv-automation] Failed to parse HLO.");
+        return false;
+    }
+
+    ex.obid      = 0;
+    ex.head      = 0;
+    ex.timestamp = vscp_makeTimeStamp();
+    vscp_setEventExToNow(&ex); // Set time to current time
+    ex.vscp_class = VSCP_CLASS2_PROTOCOL;
+    ex.vscp_type  = VSCP2_TYPE_PROTOCOL_HIGH_LEVEL_OBJECT;
+    m_guid.writeGUID(ex.GUID);
+
+    switch (hlo.m_op) {
+
+        case HLO_OP_NOOP:
+            // Send positive response
+            sprintf(buf,
+                    HLO_CMD_REPLY_TEMPLATE,
+                    "noop",
+                    "",
+                    "OK",
+                    "NOOP commaned executed correctly.");
+
+            memset(ex.data, 0, sizeof(ex.data));
+            ex.sizeData = strlen(buf);
+            memcpy(ex.data, buf, ex.sizeData);
+
+            // Put event in receive queue
+            return eventExToReceiveQueue(ex);
+
+        case HLO_OP_READ_VAR:
+            if ("SUNSET" == hlo.m_name) {
+                sprintf(buf,
+                    HLO_READ_VAR_REPLY_TEMPLATE,
+                    "sunset",
+                    "OK",
+                    13,
+                    getSunsetTime().getISODateTime().c_str());
+            } else if ("SUNRISE" == hlo.m_name) {
+                sprintf(buf,
+                    HLO_READ_VAR_REPLY_TEMPLATE,
+                    "sunrise",
+                    "OK",
+                    13,
+                    getSunriseTime().getISODateTime().c_str());
+            } else if ("SUNSETTWILIGHT" == hlo.m_name) {
+                sprintf(buf,
+                    HLO_READ_VAR_REPLY_TEMPLATE,
+                    "sunsetTwilight",
+                    "OK",
+                    13,
+                    getCivilTwilightSunsetTime().getISODateTime().c_str());
+            } else if ("SUNRISETWILIGHT" == hlo.m_name) {
+                sprintf(buf,
+                    HLO_READ_VAR_REPLY_TEMPLATE,
+                    "sunriseTwilight",
+                    "OK",
+                    13,
+                    getCivilTwilightSunriseTime().getISODateTime().c_str());
+            }
+            else if ("NOON" == hlo.m_name) {
+                sprintf(buf,
+                    HLO_READ_VAR_REPLY_TEMPLATE,
+                    "noon",
+                    "OK",
+                    13,
+                    m_noonTime.getISODateTime().c_str());
+            } else if ("SENTSUNSET" == hlo.m_name) {
+                sprintf(buf,
+                    HLO_READ_VAR_REPLY_TEMPLATE,
+                    "sentSunset",
+                    "OK",
+                    13,
+                    getSentSunsetTime().getISODateTime().c_str());
+            } else if ("SENTSUNRISE" == hlo.m_name) {
+                sprintf(buf,
+                    HLO_READ_VAR_REPLY_TEMPLATE,
+                    "sentSunrise",
+                    "OK",
+                    13,
+                    getSentSunriseTime().getISODateTime().c_str());
+            }
+            break;
+
+        case HLO_OP_WRITE_VAR:
+            break;
+
+        case HLO_OP_SAVE:
+            break;
+
+        case HLO_OP_LOAD:
+            break;
+
+        case HLO_OP_CALCULATE:
+            break;
+
+        default:
+            break;
+    };
+
+    return true;
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 // eventExToReceiveQueue
 //
@@ -783,7 +1052,6 @@ CAutomation::doWork(void)
 
         // Put event in receive queue
         return eventExToReceiveQueue(ex);
-        ;
     }
 
     // Civil Twilight Sunrise Time
@@ -953,15 +1221,18 @@ workerThread(void *pData)
 
         // Check for incoming event
         struct timespec ts;
-        ts.tv_sec = 1;
+        ts.tv_sec  = 1;
         ts.tv_nsec = 0;
-        if ( -1 == sem_timedwait(&pObj->m_semSendQueue, &ts ) ) {
-            if ( EINTR == errno ) {
-                syslog(LOG_INFO, "[vscpl2drv-automation] Interrupted by a signal handler. Terminating.");
+        if (-1 == sem_timedwait(&pObj->m_semSendQueue, &ts)) {
+            if (EINTR == errno) {
+                syslog(LOG_INFO,
+                       "[vscpl2drv-automation] Interrupted by a signal "
+                       "handler. Terminating.");
                 pObj->m_bQuit = true;
-            }
-            else if ( EINVAL == errno ) {
-                syslog(LOG_ERR, "[vscpl2drv-automation] Invalid semaphore. Terminating.");
+            } else if (EINVAL == errno) {
+                syslog(
+                  LOG_ERR,
+                  "[vscpl2drv-automation] Invalid semaphore. Terminating.");
                 pObj->m_bQuit = true;
             }
         }
@@ -978,6 +1249,12 @@ workerThread(void *pData)
             pthread_mutex_unlock(&pObj->m_mutexSendQueue);
 
             if (NULL == pEvent) continue;
+
+            // Only HLO object event is of interst to us
+            if ((VSCP_CLASS2_PROTOCOL == pEvent->vscp_class) &&
+                (VSCP2_TYPE_PROTOCOL_HIGH_LEVEL_OBJECT == pEvent->vscp_type)) {
+                pObj->handleHLO(pEvent);
+            }
 
             // Remove the event
             pthread_mutex_lock(&pObj->m_mutexSendQueue);

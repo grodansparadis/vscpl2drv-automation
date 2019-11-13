@@ -73,7 +73,6 @@ _fini()
     for (std::map<long, CAutomation *>::iterator it = g_ifMap.begin();
          it != g_ifMap.end();
          ++it) {
-        // std::cout << it->first << " => " << it->second << '\n';
 
         CAutomation *pif = it->second;
         if (NULL != pif) {
@@ -244,15 +243,36 @@ VSCPRead(long handle, vscpEvent *pEvent, unsigned long timeout)
     struct timespec ts;
     ts.tv_sec  = 0;
     ts.tv_nsec = timeout * 1000;
-    if (ETIMEDOUT == sem_timedwait(&pdrvObj->m_semReceiveQueue, &ts)) {
-        return CANAL_ERROR_TIMEOUT;
+
+    if (-1 == (rv = sem_timedwait(&pdrvObj->m_semReceiveQueue, &ts))) {
+        if (ETIMEDOUT == errno) {
+            return CANAL_ERROR_TIMEOUT;
+        } else if (EINTR == errno) {
+            syslog(LOG_ERR,
+                   "[vscpl2drv-automation] Interrupted by a signal handler");
+            return CANAL_ERROR_INTERNAL;
+        } else if (EINVAL == errno) {
+            syslog(LOG_ERR,
+                   "[vscpl2drv-automation] Invalid semaphore (timout)");
+            return CANAL_ERROR_INTERNAL;
+        } else if (EAGAIN == errno) {
+            syslog(LOG_ERR, "[vscpl2drv-automation] Blocking error");
+            return CANAL_ERROR_INTERNAL;
+        } else {
+            syslog(LOG_ERR, "[vscpl2drv-automation] Unknown error");
+            return CANAL_ERROR_INTERNAL;
+        }
     }
 
     pthread_mutex_lock(&pdrvObj->m_mutexReceiveQueue);
     vscpEvent *pLocalEvent = pdrvObj->m_receiveList.front();
+    if (NULL == pLocalEvent) {
+        pdrvObj->m_receiveList.pop_front();
+        pthread_mutex_unlock(&pdrvObj->m_mutexReceiveQueue);
+        return CANAL_ERROR_MEMORY;
+    }
     pdrvObj->m_receiveList.pop_front();
     pthread_mutex_unlock(&pdrvObj->m_mutexReceiveQueue);
-    if (NULL == pLocalEvent) return CANAL_ERROR_MEMORY;
 
     vscp_copyVSCPEvent(pEvent, pLocalEvent);
     vscp_deleteVSCPevent(pLocalEvent);
@@ -281,5 +301,3 @@ VSCPGetVendorString(void)
 {
     return VSCP_DLL_VENDOR;
 }
-
-

@@ -34,7 +34,8 @@ section on the following format
 <!-- Level II automation -->
 <driver enable="true"
     name="automation"
-    path="/usr/bin/vscpl2drv-automation.so"
+    path-driver="/usr/bin/vscpl2drv-automation.so"
+    path-config="/var/lib/vscpl2drv-automation/drv.conf"
     guid="FF:FF:FF:FF:FF:FF:FF:FC:88:99:AA:BB:CC:DD:EE:FF"
 </driver>
 ```
@@ -67,8 +68,9 @@ The configuration file have the following format
             subzone="2"
             longitude="15.1604167"
             latitude="61.7441833"
+            enable-noon="true|false"
             enable-sunrise="true|false"
-            enable-sunrise-twilight="true|false"
+            enable-sunrise-twilight="true|false
             enable-sunset="true|false"
             enable-sunset-twilight="true|false"
             filter="incoming-filter"
@@ -79,7 +81,9 @@ The configuration file have the following format
 Set debug to "true" to get debug information written to syslog. This can be a valuable help if things does nor behave as expected.
 
 ##### write
-If write is true a configuration file will be looked for in */var/lib/vscp/drivername/configure.xml*. If this file is found it wil be read and any value present in it will replace a value read from the main configuration file.
+If write is true the configuration file will be possible to save dynamically to disk. That is settings you do at runtime can be save to be persistent. The safest place for a configuration file is in the VSCP configuration folder */etc/vscp/* but dynamic saves there is not allowed if you don't run the VSCP daemon as root (which you should not). Next best place is the folder */var/lib/vscp/drivername/configure.xml*. This folder and a default configuration is written here when the driver is installed.
+
+If you never intend to change driver parameters during runtime consider moving the configuration file to the VSCP daemon configuration folder.
 
 ##### guid
 All level II drivers must have a unique GUID. There is many ways to obtain this GUID, Read more [here](https://grodansparadis.gitbooks.io/the-vscp-specification/vscp_globally_unique_identifiers.html).
@@ -225,29 +229,29 @@ You can read the following remote variable values from the vscpl2drv-automation 
 
 | Variable | Type | Description |
 | -------- | :----: | ----------------- |
-| sunset | 15 (TIME) | A BASE65 encoded time HH:MM:SS. |
-| sunrise | 15 (TIME)  | A BASE65 encoded time HH:MM:SS. |
-| sunsetTwilight | 15 (TIME)  | A BASE65 encoded time HH:MM:SS. |
-| sunriseTwilight | 15 (TIME)  | A BASE65 encoded time HH:MM:SS. |
-| noon | 15 (TIME)  | A BASE65 encoded time HH:MM:SS. |
-| sentSunset | 13 (DATETIME) | A BASE65 encoded datetime YYYY-MM-DDTHH:MM:SS. |
-| sentSunrise | 13 (DATETIME)  | A BASE65 encoded datetime YYYY-MM-DDTHH:MM:SS. |
-| sentSunset-twilight | 13 (DATETIME)  | A BASE65 datetime YYYY-MM-DDTHH:MM:SS. |
+| sunset | 13 (DATETIME) | A BASE64 encoded datetime YYYY-MM-DDTHH:MM:SS. |
+| sunrise | 13 (DATETIME)  | A BASE64 encoded datetime YYYY-MM-DDTHH:MM:SS. |
+| sunsetTwilight | 13 (DATETIME)  | A BASE64 encoded datetime YYYY-MM-DDTHH:MM:SS. |
+| sunriseTwilight | 13 (DATETIME)  | A BASE64 encoded datetime YYYY-MM-DDTHH:MM:SS. |
+| noon | 13 (DATETIME)  | A BASE64 encoded datetime YYYY-MM-DDTHH:MM:SS. |
+| sentSunset | 13 (DATETIME) | A BASE64 encoded datetime YYYY-MM-DDTHH:MM:SS. |
+| sentSunrise | 13 (DATETIME)  | A BASE64 encoded datetime YYYY-MM-DDTHH:MM:SS. |
+| sentSunset-twilight | 13 (DATETIME)  | A BASE64 datetime YYYY-MM-DDTHH:MM:SS. |
 | sentSunrise-twilight | 13 (DATETIME)  | datetime YYYY-MM-DDTHH:MM:SS. |
-| sentNoon | 13 (DATETIME)  | A BASE65 encoded datetime YYYY-MM-DDTHH:MM:SS. |
-| enableSunset | 2 (BOOL)  | rw A BASE65 encoded boolean. |
-| enableSunrise | 2 (BOOL) | rw A BASE65 encoded boolean. |
-| enableSunset_twilight | rw 2 (BOOL) | rw A BASE65 encoded boolean. |
-| enable-sunrise_twilight | rw 2 (BOOL) | rw A BASE65 encoded boolean. |
-| enableNoon | 2 (BOOL) | rw A BASE65 encoded boolean. |
-| longitude | 5 (DOUBLE) | rw A BASE65 encoded floating point value. |
-| latitude | 5 (DOUBLE) | rw A BASE65 encoded encoded floating point value. |
-| zone | 3 (INT) | rw A BASE65 encoded integer value. |
-| subzone | 3 (INT) | rw A BASE65 encoded integer value. |
-| daylength | 5 (DOUBLE) | rw A BASE65 encoded encoded floating point value. |
-| declination | 5 (DOUBLE) | rw A BASE65 encoded encoded floating point value. |
-| SunMaxAltitude | 5 (DOUBLE) | rw A BASE65 encoded encoded floating point value. |
-| LastCalculation | 5 (DOUBLE) | rw A BASE65 encoded encoded floating point value. |
+| sentNoon | 13 (DATETIME)  | A BASE64 encoded datetime YYYY-MM-DDTHH:MM:SS. |
+| enableSunset | 2 (BOOL)  | rw A BASE64 encoded boolean. |
+| enableSunrise | 2 (BOOL) | rw A BASE64 encoded boolean. |
+| enableSunset_twilight | rw 2 (BOOL) | rw A BASE64 encoded boolean. |
+| enable-sunrise_twilight | rw 2 (BOOL) | rw A BASE64 encoded boolean. |
+| enableNoon | 2 (BOOL) | rw A BASE64 encoded boolean. |
+| longitude | 5 (DOUBLE) | rw A BASE64 encoded floating point value. |
+| latitude | 5 (DOUBLE) | rw A BASE64 encoded encoded floating point value. |
+| zone | 3 (INT) | rw A BASE64 encoded integer value. |
+| subzone | 3 (INT) | rw A BASE64 encoded integer value. |
+| daylength | 5 (DOUBLE) | rw A BASE64 encoded encoded floating point value. |
+| declination | 5 (DOUBLE) | rw A BASE64 encoded encoded floating point value. |
+| SunMaxAltitude | 5 (DOUBLE) | rw A BASE64 encoded encoded floating point value. |
+| LastCalculation | 5 (DOUBLE) | rw A BASE64 encoded encoded floating point value. |
 
 
 | Command | Description |
