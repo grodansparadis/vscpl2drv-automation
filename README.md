@@ -211,8 +211,8 @@ response will be
 ```xml
 <vscp-resp op="readvar"
            result="true"
-           type="15"
-           value="BASE64(HH:MM:SS)"
+           type="13"
+           value="BASE64(YY-MM-DDTHH:MM:SS)"
            ---- more attribytes for full="true"
 }
 ```
@@ -221,7 +221,7 @@ where
 
 **result** is 'true' for success and 'false' if not.
 
-**type** is **15** indicating that this is a remote variable with a value that should be interpreted as a time.
+**type** is **13** indicating that this is a remote variable with a value that should be interpreted as a datetime.
 
 **value** is the BASE64 encoded value of the time string HH:MM:SS.
 
@@ -231,27 +231,27 @@ You can read the following remote variable values from the vscpl2drv-automation 
 | -------- | :----: | ----------------- |
 | sunset | 13 (DATETIME) | A BASE64 encoded datetime YYYY-MM-DDTHH:MM:SS. |
 | sunrise | 13 (DATETIME)  | A BASE64 encoded datetime YYYY-MM-DDTHH:MM:SS. |
-| sunsetTwilight | 13 (DATETIME)  | A BASE64 encoded datetime YYYY-MM-DDTHH:MM:SS. |
-| sunriseTwilight | 13 (DATETIME)  | A BASE64 encoded datetime YYYY-MM-DDTHH:MM:SS. |
+| sunset-twilight | 13 (DATETIME)  | A BASE64 encoded datetime YYYY-MM-DDTHH:MM:SS. |
+| sunrise-twilight | 13 (DATETIME)  | A BASE64 encoded datetime YYYY-MM-DDTHH:MM:SS. |
 | noon | 13 (DATETIME)  | A BASE64 encoded datetime YYYY-MM-DDTHH:MM:SS. |
-| sentSunset | 13 (DATETIME) | A BASE64 encoded datetime YYYY-MM-DDTHH:MM:SS. |
-| sentSunrise | 13 (DATETIME)  | A BASE64 encoded datetime YYYY-MM-DDTHH:MM:SS. |
-| sentSunset-twilight | 13 (DATETIME)  | A BASE64 datetime YYYY-MM-DDTHH:MM:SS. |
-| sentSunrise-twilight | 13 (DATETIME)  | datetime YYYY-MM-DDTHH:MM:SS. |
-| sentNoon | 13 (DATETIME)  | A BASE64 encoded datetime YYYY-MM-DDTHH:MM:SS. |
-| enableSunset | 2 (BOOL)  | rw A BASE64 encoded boolean. |
-| enableSunrise | 2 (BOOL) | rw A BASE64 encoded boolean. |
-| enableSunset_twilight | rw 2 (BOOL) | rw A BASE64 encoded boolean. |
-| enable-sunrise_twilight | rw 2 (BOOL) | rw A BASE64 encoded boolean. |
-| enableNoon | 2 (BOOL) | rw A BASE64 encoded boolean. |
+| sent-sunrise | 13 (DATETIME)  | A BASE64 encoded datetime YYYY-MM-DDTHH:MM:SS. |
+| sent-sunset | 13 (DATETIME) | A BASE64 encoded datetime YYYY-MM-DDTHH:MM:SS. |
+| sent-sunrise-twilight | 13 (DATETIME)  | datetime YYYY-MM-DDTHH:MM:SS. |
+| sent-sunset-twilight | 13 (DATETIME)  | A BASE64 datetime YYYY-MM-DDTHH:MM:SS. |
+| sent-noon | 13 (DATETIME)  | A BASE64 encoded datetime YYYY-MM-DDTHH:MM:SS. |
+| enable-sunrise | 2 (BOOL) | rw A BASE64 encoded boolean. |
+| enable-sunset | 2 (BOOL)  | rw A BASE64 encoded boolean. |
+| enable-sunrise-twilight | rw 2 (BOOL) | rw A BASE64 encoded boolean. |
+| enable-sunset-twilight | rw 2 (BOOL) | rw A BASE64 encoded boolean. |
+| enable-noon | 2 (BOOL) | rw A BASE64 encoded boolean. |
 | longitude | 5 (DOUBLE) | rw A BASE64 encoded floating point value. |
 | latitude | 5 (DOUBLE) | rw A BASE64 encoded encoded floating point value. |
 | zone | 3 (INT) | rw A BASE64 encoded integer value. |
 | subzone | 3 (INT) | rw A BASE64 encoded integer value. |
 | daylength | 5 (DOUBLE) | rw A BASE64 encoded encoded floating point value. |
 | declination | 5 (DOUBLE) | rw A BASE64 encoded encoded floating point value. |
-| SunMaxAltitude | 5 (DOUBLE) | rw A BASE64 encoded encoded floating point value. |
-| LastCalculation | 5 (DOUBLE) | rw A BASE64 encoded encoded floating point value. |
+| sun-max-altitude | 5 (DOUBLE) | rw A BASE64 encoded encoded floating point value. |
+| last-calculation | 13 (DATETIME) | A BASE64 encoded datetime YYYY-MM-DDTHH:MM:SS. |
 
 
 | Command | Description |

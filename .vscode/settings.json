@@ -93,7 +93,14 @@
         "valarray": "cpp",
         "variant": "cpp",
         "algorithm": "cpp",
-        "canaldlldef.h": "c"
+        "canaldlldef.h": "c",
+        "bit": "cpp",
+        "map": "cpp",
+        "set": "cpp",
+        "iterator": "cpp",
+        "random": "cpp",
+        "regex": "cpp",
+        "string": "cpp"
     },
     "cSpell.words": [
         "NCBENUM",

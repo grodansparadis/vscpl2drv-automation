@@ -32,6 +32,7 @@
 #define _POSIX
 
 #include <list>
+#include <sstream>
 #include <string>
 
 #include <pthread.h>
@@ -42,29 +43,38 @@
 #include <time.h>
 #include <unistd.h>
 
-#include <vscpdatetime.h>
 #include <guid.h>
+#include <vscpdatetime.h>
 
 class CControlObject;
 
-#define HLO_OP_NOOP         0    // No operation
-#define HLO_OP_READ_VAR     1    // Read variable
-#define HLO_OP_WRITE_VAR    2    // Write variable
-#define HLO_OP_SAVE         3    // Save configuration
-#define HLO_OP_LOAD         4    // Load configuration
-#define HLO_OP_CALCULATE    5    // Do astro. calculations
-#define HLO_OP_UNKNOWN      255  // Unknow command
+#define HLO_OP_NOOP 0      // No operation
+#define HLO_OP_READ_VAR 1  // Read variable
+#define HLO_OP_WRITE_VAR 2 // Write variable
+#define HLO_OP_SAVE 3      // Save configuration
+#define HLO_OP_LOAD 4      // Load configuration
+#define HLO_OP_CALCULATE 5 // Do astro. calculations
+#define HLO_OP_UNKNOWN 255 // Unknow command
 
-#define HLO_CMD_REPLY_TEMPLATE  "<vscp-resp op=\"%s\" "\
-    "name=\"%s\" "\
-    "result=\"%s\" "\
+#define HLO_CMD_REPLY_TEMPLATE                                                 \
+    "<vscp-resp op=\"%s\" "                                                    \
+    "name=\"%s\" "                                                             \
+    "result=\"%s\" "                                                           \
     "description=\"%s\" />"
 
-#define HLO_READ_VAR_REPLY_TEMPLATE  "<vscp-resp op=\"vscp-readvar\" "\
-    "name=\"%s \" "\
-    "result=\"%s \" "\
-    "type=%d "\
+#define HLO_READ_VAR_REPLY_TEMPLATE                                            \
+    "<vscp-resp op=\"vscp-readvar\" "                                          \
+    "name=\"%s\" "                                                             \
+    "result=\"%s\" "                                                           \
+    "type=%d "                                                                 \
     "value=\"%s\" />"
+
+#define HLO_READ_VAR_ERR_REPLY_TEMPLATE                                        \
+    "<vscp-resp op=\"vscp-readvar\" "                                          \
+    "name=\"%s\" "                                                             \
+    "result=\"ERR\" "                                                          \
+    "error-code=%d "                                                           \
+    "description=\"%s\" />"
 
 ///////////////////////////////////////////////////////////////////////////////
 // VSCP automation HLO object
@@ -109,10 +119,10 @@ class CAutomation
     // Destructor
     virtual ~CAutomation(void);
 
-     /*!
-        Open operations
-        @return True on success.
-     */
+    /*!
+       Open operations
+       @return True on success.
+    */
     bool open(const std::string &path);
 
     /*!
@@ -181,8 +191,7 @@ class CAutomation
         @param ex Event to send
         @return true on success, false on failure
     */
-    bool
-    eventExToReceiveQueue(vscpEventEx& ex);
+    bool eventExToReceiveQueue(vscpEventEx &ex);
 
     /*!
         Do automation work
@@ -215,11 +224,25 @@ class CAutomation
     /// getter for zone
     uint8_t getZone(void) { return m_zone; }
 
+    std::string getZoneStr(void)
+    {
+        std::ostringstream strs;
+        strs << m_zone;
+        return strs.str();
+    }
+
     /// Setter for subzone
     void setSubzone(uint8_t subzone) { m_subzone = subzone; };
 
     /// getter for subzone
     uint8_t getSubzone(void) { return m_subzone; };
+
+    std::string getSubZoneStr(void)
+    {
+        std::ostringstream strs;
+        strs << m_subzone;
+        return strs.str();
+    }
 
     /// setter for m_bWrite
     void enableWrite(bool bEnable = true) { m_bWrite = bEnable; };
@@ -228,7 +251,10 @@ class CAutomation
     void disableWrite(void) { m_bWrite = false; };
 
     /// setter for m_bCalculatedNoonEvent
-    void enableCalculatedNoonEvent(bool bEnable = true) { m_bCalculatedNoonEvent = bEnable; };
+    void enableCalculatedNoonEvent(bool bEnable = true)
+    {
+        m_bCalculatedNoonEvent = bEnable;
+    };
 
     /// setter for m_bCalculatedNoonEvent
     void disableCalculatedNoonEvent(void) { m_bCalculatedNoonEvent = false; };
@@ -265,10 +291,21 @@ class CAutomation
 
     /// setter for longitude
     void setLongitude(double l) { m_longitude = l; };
+    std::string getLongitudeStr(void)
+    {
+        std::ostringstream strs;
+        strs << m_longitude;
+        return strs.str();
+    }
 
     /// setter for latitude
     void setLatitude(double l) { m_latitude = l; };
-
+    std::string getLatitudeStr(void)
+    {
+        std::ostringstream strs;
+        strs << m_latitude;
+        return strs.str();
+    }
 
     // Setter/getter for automation enable/disable
     void enableAutomation(bool bVal = true) { m_bEnableAutomation = bVal; };
@@ -308,12 +345,34 @@ class CAutomation
 
     double getLongitude(void) { return m_longitude; };
     double getLatitude(void) { return m_latitude; };
+
     double getDayLength(void)
     {
         return m_daylength;
     }; // use convert2HourMinute to hh:mm
+    std::string getDayLengthStr(void)
+    {
+        std::ostringstream strs;
+        strs << m_daylength;
+        return strs.str();
+    }
+
+
     double getDeclination(void) { return m_declination; };
+    std::string getDeclinationStr(void)
+    {
+        std::ostringstream strs;
+        strs << m_declination;
+        return strs.str();
+    }
+
     double getSunMaxAltitude(void) { return m_SunMaxAltitude; };
+    std::string getSunMaxAltitudeStr(void)
+    {
+        std::ostringstream strs;
+        strs << m_SunMaxAltitude;
+        return strs.str();
+    }
 
     bool isSendSunriseEvent(void) { return m_bSunRiseEvent; };
     vscpdatetime &getSentSunriseEvent(void) { return m_SunriseTime_sent; };
@@ -336,8 +395,10 @@ class CAutomation
     bool isSendCalculatedNoonEvent(void) { return m_bCalculatedNoonEvent; };
     vscpdatetime &getSentCalculatedNoonEvent(void) { return m_noonTime_sent; };
 
-  public:
+    std::string convertToBASE64( std::string str) { return (vscp_base64_std_encode( str ) ? str : std::string("") ); }
 
+
+  public:
     /// Debug flag set in config
     bool m_bDebug;
 
@@ -386,8 +447,7 @@ class CAutomation
     /// Latitude for this server
     double m_latitude;
 
-    private:
-
+  private:
     /*!
         Enable/disable the CLASS1.INFORMATION, Type=52 (Civil sunrise twilight
        time) to be sent. Longitude, latitude and time zone must be set for this
@@ -416,13 +476,12 @@ class CAutomation
     */
     bool m_bSunSetTwilightEvent;
 
-
     bool m_bNoonEvent;
 
     /*!
-        Enable/disable the CLASS1.INFORMATION, Type=58 (Calculated Noon) to be sent.
-        Longitude, latitude and time zone must be set for this
-        to work correctly.
+        Enable/disable the CLASS1.INFORMATION, Type=58 (Calculated Noon) to be
+       sent. Longitude, latitude and time zone must be set for this to work
+       correctly.
     */
     bool m_bCalculatedNoonEvent;
 
@@ -462,7 +521,6 @@ class CAutomation
         time is 12:00
     */
     bool m_bCalulationHasBeenDone;
-
 };
 
 #endif
