@@ -48,33 +48,9 @@
 
 class CControlObject;
 
-#define HLO_OP_NOOP 0      // No operation
-#define HLO_OP_READ_VAR 1  // Read variable
-#define HLO_OP_WRITE_VAR 2 // Write variable
-#define HLO_OP_SAVE 3      // Save configuration
-#define HLO_OP_LOAD 4      // Load configuration
-#define HLO_OP_CALCULATE 5 // Do astro. calculations
-#define HLO_OP_UNKNOWN 255 // Unknow command
 
-#define HLO_CMD_REPLY_TEMPLATE                                                 \
-    "<vscp-resp op=\"%s\" "                                                    \
-    "name=\"%s\" "                                                             \
-    "result=\"%s\" "                                                           \
-    "description=\"%s\" />"
 
-#define HLO_READ_VAR_REPLY_TEMPLATE                                            \
-    "<vscp-resp op=\"vscp-readvar\" "                                          \
-    "name=\"%s\" "                                                             \
-    "result=\"%s\" "                                                           \
-    "type=%d "                                                                 \
-    "value=\"%s\" />"
 
-#define HLO_READ_VAR_ERR_REPLY_TEMPLATE                                        \
-    "<vscp-resp op=\"vscp-readvar\" "                                          \
-    "name=\"%s\" "                                                             \
-    "result=\"ERR\" "                                                          \
-    "error-code=%d "                                                           \
-    "description=\"%s\" />"
 
 ///////////////////////////////////////////////////////////////////////////////
 // VSCP automation HLO object
@@ -97,6 +73,9 @@ class CHLO
 
     // HLO name
     std::string m_name;
+
+    // Variable type
+    uint8_t m_varType;
 
     // HLO value
     std::string m_value;

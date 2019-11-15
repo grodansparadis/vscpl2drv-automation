@@ -64,13 +64,13 @@
 
 #include <expat.h>
 
+#include "automation.h"
+#include <variablecodes.h>
 #include <vscp.h>
 #include <vscp_class.h>
 #include <vscp_type.h>
 #include <vscphelper.h>
 #include <vscpremotetcpif.h>
-
-#include "automation.h"
 
 // Buffer for XML parser
 #define XML_BUFF_SIZE 30000
@@ -759,9 +759,15 @@ startHLOParser(void *data, const char *name, const char **attr)
                     vscp_makeUpper(attribute);
                     pObj->m_name = attribute;
                 }
+            } else if (0 == strcasecmp(attr[i], "type")) {
+                if (!attribute.empty()) {
+                    pObj->m_varType = vscp_readStringValue(attribute);
+                }
             } else if (0 == strcasecmp(attr[i], "value")) {
                 if (!attribute.empty()) {
-                    pObj->m_value = attribute;
+                    if (vscp_base64_std_decode(attribute)) {
+                        pObj->m_value = attribute;
+                    }
                 }
             } else if (0 == strcasecmp(attr[i], "full")) {
                 if (!attribute.empty()) {
@@ -886,111 +892,120 @@ CAutomation::handleHLO(vscpEvent *pEvent)
 
         case HLO_OP_READ_VAR:
             if ("SUNRISE" == hlo.m_name) {
-                sprintf(buf,
-                        HLO_READ_VAR_REPLY_TEMPLATE,
-                        "sunrise",
-                        "OK",
-                        13,
-                        convertToBASE64(getSunriseTime().getISODateTime()).c_str());
+                sprintf(
+                  buf,
+                  HLO_READ_VAR_REPLY_TEMPLATE,
+                  "sunrise",
+                  "OK",
+                  VSCP_DAEMON_VARIABLE_CODE_DATETIME,
+                  convertToBASE64(getSunriseTime().getISODateTime()).c_str());
             } else if ("SUNSET" == hlo.m_name) {
-                sprintf(buf,
-                        HLO_READ_VAR_REPLY_TEMPLATE,
-                        "sunset",
-                        "OK",
-                        13,
-                        convertToBASE64(getSunsetTime().getISODateTime()).c_str());
+                sprintf(
+                  buf,
+                  HLO_READ_VAR_REPLY_TEMPLATE,
+                  "sunset",
+                  "OK",
+                  VSCP_DAEMON_VARIABLE_CODE_DATETIME,
+                  convertToBASE64(getSunsetTime().getISODateTime()).c_str());
             } else if ("SUNRISE-TWILIGHT" == hlo.m_name) {
                 sprintf(buf,
                         HLO_READ_VAR_REPLY_TEMPLATE,
                         "sunrise-twilight",
                         "OK",
-                        13,
-                        convertToBASE64(getCivilTwilightSunriseTime().getISODateTime()).c_str());
+                        VSCP_DAEMON_VARIABLE_CODE_DATETIME,
+                        convertToBASE64(
+                          getCivilTwilightSunriseTime().getISODateTime())
+                          .c_str());
             } else if ("SUNSET-TWILIGHT" == hlo.m_name) {
-                sprintf(buf,
-                        HLO_READ_VAR_REPLY_TEMPLATE,
-                        "sunset-twilight",
-                        "OK",
-                        13,
-                        convertToBASE64(getCivilTwilightSunsetTime().getISODateTime()).c_str());
+                sprintf(
+                  buf,
+                  HLO_READ_VAR_REPLY_TEMPLATE,
+                  "sunset-twilight",
+                  "OK",
+                  VSCP_DAEMON_VARIABLE_CODE_DATETIME,
+                  convertToBASE64(getCivilTwilightSunsetTime().getISODateTime())
+                    .c_str());
             } else if ("NOON" == hlo.m_name) {
                 sprintf(buf,
                         HLO_READ_VAR_REPLY_TEMPLATE,
                         "noon",
                         "OK",
-                        13,
+                        VSCP_DAEMON_VARIABLE_CODE_DATETIME,
                         convertToBASE64(m_noonTime.getISODateTime()).c_str());
             } else if ("SENT-SUNRISE" == hlo.m_name) {
                 sprintf(buf,
                         HLO_READ_VAR_REPLY_TEMPLATE,
                         "sent-sunrise",
                         "OK",
-                        13,
-                        convertToBASE64(getSentSunriseTime().getISODateTime()).c_str());
+                        VSCP_DAEMON_VARIABLE_CODE_DATETIME,
+                        convertToBASE64(getSentSunriseTime().getISODateTime())
+                          .c_str());
             } else if ("SENT-SUNSET" == hlo.m_name) {
                 sprintf(buf,
                         HLO_READ_VAR_REPLY_TEMPLATE,
                         "sent-sunset",
                         "OK",
-                        13,
-                        convertToBASE64(getSentSunsetTime().getISODateTime()).c_str());
+                        VSCP_DAEMON_VARIABLE_CODE_DATETIME,
+                        convertToBASE64(getSentSunsetTime().getISODateTime())
+                          .c_str());
             } else if ("SENT-SUNRISE-TWILIGHT" == hlo.m_name) {
-                sprintf(
-                  buf,
-                  HLO_READ_VAR_REPLY_TEMPLATE,
-                  "sent-sunrise-twilight",
-                  "OK",
-                  13,
-                  convertToBASE64(getSentCivilTwilightSunriseTime().getISODateTime()).c_str());
+                sprintf(buf,
+                        HLO_READ_VAR_REPLY_TEMPLATE,
+                        "sent-sunrise-twilight",
+                        "OK",
+                        VSCP_DAEMON_VARIABLE_CODE_DATETIME,
+                        convertToBASE64(
+                          getSentCivilTwilightSunriseTime().getISODateTime())
+                          .c_str());
             } else if ("SENT-SUNSET-TWILIGHT" == hlo.m_name) {
-                sprintf(
-                  buf,
-                  HLO_READ_VAR_REPLY_TEMPLATE,
-                  "sent-sunset-twilight",
-                  "OK",
-                  13,
-                  convertToBASE64(getSentCivilTwilightSunsetTime().getISODateTime()).c_str());
+                sprintf(buf,
+                        HLO_READ_VAR_REPLY_TEMPLATE,
+                        "sent-sunset-twilight",
+                        "OK",
+                        VSCP_DAEMON_VARIABLE_CODE_DATETIME,
+                        convertToBASE64(
+                          getSentCivilTwilightSunsetTime().getISODateTime())
+                          .c_str());
             } else if ("SENT-SUNRISE-TWILIGHT" == hlo.m_name) {
-                sprintf(
-                  buf,
-                  HLO_READ_VAR_REPLY_TEMPLATE,
-                  "sent-sunrise-twilight",
-                  "OK",
-                  13,
-                  convertToBASE64(getSentCivilTwilightSunriseTime().getISODateTime()).c_str());
+                sprintf(buf,
+                        HLO_READ_VAR_REPLY_TEMPLATE,
+                        "sent-sunrise-twilight",
+                        "OK",
+                        VSCP_DAEMON_VARIABLE_CODE_DATETIME,
+                        convertToBASE64(
+                          getSentCivilTwilightSunriseTime().getISODateTime())
+                          .c_str());
             } else if ("SENT-NOON" == hlo.m_name) {
                 sprintf(buf,
                         HLO_READ_VAR_REPLY_TEMPLATE,
                         "sent-noon",
                         "OK",
-                        13,
+                        VSCP_DAEMON_VARIABLE_CODE_DATETIME,
                         getSentNoonTime().getISODateTime().c_str());
             } else if ("ENABLE-SUNRISE" == hlo.m_name) {
                 sprintf(buf,
                         HLO_READ_VAR_REPLY_TEMPLATE,
                         "enable-sunrise",
                         "OK",
-                        2,
-                        convertToBASE64(m_bSunRiseEvent
-                                          ? std::string("true")
-                                          : std::string("false"))
+                        VSCP_DAEMON_VARIABLE_CODE_BOOLEAN,
+                        convertToBASE64(m_bSunRiseEvent ? std::string("true")
+                                                        : std::string("false"))
                           .c_str());
             } else if ("ENABLE-SUNSET" == hlo.m_name) {
                 sprintf(buf,
                         HLO_READ_VAR_REPLY_TEMPLATE,
                         "enable-sunset",
                         "OK",
-                        2,
-                        convertToBASE64(m_bSunSetEvent
-                                          ? std::string("true")
-                                          : std::string("false"))
+                        VSCP_DAEMON_VARIABLE_CODE_BOOLEAN,
+                        convertToBASE64(m_bSunSetEvent ? std::string("true")
+                                                       : std::string("false"))
                           .c_str());
             } else if ("ENABLE-SUNRISE-TWILIGHT" == hlo.m_name) {
                 sprintf(buf,
                         HLO_READ_VAR_REPLY_TEMPLATE,
                         "enable-sunrise-twilight",
                         "OK",
-                        2,
+                        VSCP_DAEMON_VARIABLE_CODE_BOOLEAN,
                         convertToBASE64(m_bSunRiseTwilightEvent
                                           ? std::string("true")
                                           : std::string("false"))
@@ -1000,7 +1015,7 @@ CAutomation::handleHLO(vscpEvent *pEvent)
                         HLO_READ_VAR_REPLY_TEMPLATE,
                         "enable-sunset-twilight",
                         "OK",
-                        2,
+                        VSCP_DAEMON_VARIABLE_CODE_BOOLEAN,
                         convertToBASE64(m_bSunSetTwilightEvent
                                           ? std::string("true")
                                           : std::string("false"))
@@ -1010,12 +1025,356 @@ CAutomation::handleHLO(vscpEvent *pEvent)
                         HLO_READ_VAR_REPLY_TEMPLATE,
                         "enable-noon",
                         "OK",
-                        2,
-                        convertToBASE64(m_bNoonEvent
-                                          ? std::string("true")
-                                          : std::string("false"))
+                        VSCP_DAEMON_VARIABLE_CODE_BOOLEAN,
+                        convertToBASE64(m_bNoonEvent ? std::string("true")
+                                                     : std::string("false"))
                           .c_str());
             } else if ("LONGITUDE" == hlo.m_name) {
+                sprintf(buf,
+                        HLO_READ_VAR_REPLY_TEMPLATE,
+                        "longitude",
+                        "OK",
+                        VSCP_DAEMON_VARIABLE_CODE_DOUBLE,
+                        convertToBASE64(getLongitudeStr()).c_str());
+            } else if ("LATITUDE" == hlo.m_name) {
+                sprintf(buf,
+                        HLO_READ_VAR_REPLY_TEMPLATE,
+                        "latitude",
+                        "OK",
+                        VSCP_DAEMON_VARIABLE_CODE_DOUBLE,
+                        convertToBASE64(getLatitudeStr()).c_str());
+            } else if ("ZONE" == hlo.m_name) {
+                sprintf(buf,
+                        HLO_READ_VAR_REPLY_TEMPLATE,
+                        "zone",
+                        "OK",
+                        VSCP_DAEMON_VARIABLE_CODE_INTEGER,
+                        convertToBASE64(getZoneStr()).c_str());
+            } else if ("SUBZONE" == hlo.m_name) {
+                sprintf(buf,
+                        HLO_READ_VAR_REPLY_TEMPLATE,
+                        "subzone",
+                        "OK",
+                        VSCP_DAEMON_VARIABLE_CODE_INTEGER,
+                        convertToBASE64(getSubZoneStr()).c_str());
+            } else if ("DAYLENGTH" == hlo.m_name) {
+                sprintf(buf,
+                        HLO_READ_VAR_REPLY_TEMPLATE,
+                        "daylength",
+                        "OK",
+                        VSCP_DAEMON_VARIABLE_CODE_DOUBLE,
+                        convertToBASE64(getDayLengthStr()).c_str());
+            } else if ("DECLINATION" == hlo.m_name) {
+                sprintf(buf,
+                        HLO_READ_VAR_REPLY_TEMPLATE,
+                        "declination",
+                        "OK",
+                        VSCP_DAEMON_VARIABLE_CODE_DOUBLE,
+                        convertToBASE64(getDeclinationStr()).c_str());
+            } else if ("SUN-MAX-ALTITUDE" == hlo.m_name) {
+                sprintf(buf,
+                        HLO_READ_VAR_REPLY_TEMPLATE,
+                        "sun-max-altitude",
+                        "OK",
+                        VSCP_DAEMON_VARIABLE_CODE_DOUBLE,
+                        convertToBASE64(getSunMaxAltitudeStr()).c_str());
+            } else if ("LAST-CALCULATION" == hlo.m_name) {
+                sprintf(buf,
+                        HLO_READ_VAR_REPLY_TEMPLATE,
+                        "last-calculation",
+                        "OK",
+                        VSCP_DAEMON_VARIABLE_CODE_DATETIME,
+                        convertToBASE64(getLastCalculation().getISODateTime())
+                          .c_str());
+            } else {
+                sprintf(
+                  buf,
+                  HLO_READ_VAR_ERR_REPLY_TEMPLATE,
+                  hlo.m_name.c_str(),
+                  ERR_VARIABLE_UNKNOWN,
+                  convertToBASE64(std::string("Unknown variable")).c_str());
+            }
+            break;
+
+        case HLO_OP_WRITE_VAR:
+            if ("SUNRISE" == hlo.m_name) {
+                // Read Only variable
+                sprintf(buf,
+                        HLO_READ_VAR_ERR_REPLY_TEMPLATE,
+                        "sunrise",
+                        VSCP_DAEMON_VARIABLE_CODE_BOOLEAN,
+                        "Variable is read only.");
+            } else if ("SUNSET" == hlo.m_name) {
+                // Read Only variable
+                sprintf(buf,
+                        HLO_READ_VAR_ERR_REPLY_TEMPLATE,
+                        "sunset",
+                        VSCP_DAEMON_VARIABLE_CODE_BOOLEAN,
+                        "Variable is read only.");
+            } else if ("SUNRISE-TWILIGHT" == hlo.m_name) {
+                // Read Only variable
+                sprintf(buf,
+                        HLO_READ_VAR_ERR_REPLY_TEMPLATE,
+                        "sunrise",
+                        VSCP_DAEMON_VARIABLE_CODE_BOOLEAN,
+                        "Variable is read only.");
+                sprintf(buf,
+                        HLO_READ_VAR_REPLY_TEMPLATE,
+                        "sunrise-twilight",
+                        "OK",
+                        VSCP_DAEMON_VARIABLE_CODE_DATETIME,
+                        convertToBASE64(
+                          getCivilTwilightSunriseTime().getISODateTime())
+                          .c_str());
+            } else if ("SUNSET-TWILIGHT" == hlo.m_name) {
+                // Read Only variable
+                sprintf(buf,
+                        HLO_READ_VAR_ERR_REPLY_TEMPLATE,
+                        "sunrise",
+                        VSCP_DAEMON_VARIABLE_CODE_BOOLEAN,
+                        "Variable is read only.");
+                sprintf(
+                  buf,
+                  HLO_READ_VAR_REPLY_TEMPLATE,
+                  "sunset-twilight",
+                  "OK",
+                  VSCP_DAEMON_VARIABLE_CODE_DATETIME,
+                  convertToBASE64(getCivilTwilightSunsetTime().getISODateTime())
+                    .c_str());
+            } else if ("NOON" == hlo.m_name) {
+                // Read Only variable
+                sprintf(buf,
+                        HLO_READ_VAR_ERR_REPLY_TEMPLATE,
+                        "sunrise",
+                        VSCP_DAEMON_VARIABLE_CODE_BOOLEAN,
+                        "Variable is read only.");
+                sprintf(buf,
+                        HLO_READ_VAR_REPLY_TEMPLATE,
+                        "noon",
+                        "OK",
+                        VSCP_DAEMON_VARIABLE_CODE_DATETIME,
+                        convertToBASE64(m_noonTime.getISODateTime()).c_str());
+            } else if ("SENT-SUNRISE" == hlo.m_name) {
+                // Read Only variable
+                sprintf(buf,
+                        HLO_READ_VAR_ERR_REPLY_TEMPLATE,
+                        "sent-sunrise",
+                        ERR_VARIABLE_READ_ONLY,
+                        "Variable is read only.");
+            } else if ("SENT-SUNSET" == hlo.m_name) {
+                // Read Only variable
+                sprintf(buf,
+                        HLO_READ_VAR_ERR_REPLY_TEMPLATE,
+                        "sent-sunset",
+                        ERR_VARIABLE_READ_ONLY,
+                        "Variable is read only.");
+            } else if ("SENT-SUNRISE-TWILIGHT" == hlo.m_name) {
+                // Read Only variable
+                sprintf(buf,
+                        HLO_READ_VAR_ERR_REPLY_TEMPLATE,
+                        "sent-sunrise-twilight",
+                        ERR_VARIABLE_READ_ONLY,
+                        "Variable is read only.");
+            } else if ("SENT-SUNSET-TWILIGHT" == hlo.m_name) {
+                // Read Only variable
+                sprintf(buf,
+                        HLO_READ_VAR_ERR_REPLY_TEMPLATE,
+                        "sent-sunset-twilight",
+                        ERR_VARIABLE_READ_ONLY,
+                        "Variable is read only.");
+            } else if ("SENT-SUNRISE-TWILIGHT" == hlo.m_name) {
+
+            } else if ("SENT-NOON" == hlo.m_name) {
+                // Read Only variable
+                sprintf(buf,
+                        HLO_READ_VAR_ERR_REPLY_TEMPLATE,
+                        "sent-noon",
+                        ERR_VARIABLE_READ_ONLY,
+                        "Variable is read only.");
+            } else if ("ENABLE-SUNRISE" == hlo.m_name) {
+                if (VSCP_DAEMON_VARIABLE_CODE_BOOLEAN != hlo.m_varType) {
+                    // Wrong variable type
+                    sprintf(buf,
+                            HLO_READ_VAR_ERR_REPLY_TEMPLATE,
+                            "enable-sunrise",
+                            ERR_VARIABLE_WRONG_TYPE,
+                            "Variable type should be boolean.");
+                } else {
+                    vscp_trim(hlo.m_value);
+                    vscp_makeUpper(hlo.m_value);
+                    if ("TRUE" == hlo.m_value) {
+                        enableSunRiseEvent();
+                        sprintf(buf,
+                                HLO_READ_VAR_REPLY_TEMPLATE,
+                                "enable-sunrise",
+                                "OK",
+                                VSCP_DAEMON_VARIABLE_CODE_BOOLEAN,
+                                convertToBASE64(isSendSunriseEvent()
+                                                  ? std::string("true")
+                                                  : std::string("false"))
+                                  .c_str());
+                    } else {
+                        disableSunRiseEvent();
+                        sprintf(buf,
+                                HLO_READ_VAR_REPLY_TEMPLATE,
+                                "enable-sunrise",
+                                "OK",
+                                VSCP_DAEMON_VARIABLE_CODE_BOOLEAN,
+                                convertToBASE64(isSendSunriseEvent()
+                                                  ? std::string("true")
+                                                  : std::string("false"))
+                                  .c_str());
+                    }
+                }
+            } else if ("ENABLE-SUNSET" == hlo.m_name) {
+                if (VSCP_DAEMON_VARIABLE_CODE_BOOLEAN != hlo.m_varType) {
+                    // Wrong variable type
+                    sprintf(buf,
+                            HLO_READ_VAR_ERR_REPLY_TEMPLATE,
+                            "enable-sunset",
+                            ERR_VARIABLE_WRONG_TYPE,
+                            "Variable type should be boolean.");
+                } else {
+                    vscp_trim(hlo.m_value);
+                    vscp_makeUpper(hlo.m_value);
+                    if ("TRUE" == hlo.m_value) {
+                        enableSunSetEvent();
+                        sprintf(buf,
+                                HLO_READ_VAR_REPLY_TEMPLATE,
+                                "enable-sunset",
+                                "OK",
+                                VSCP_DAEMON_VARIABLE_CODE_BOOLEAN,
+                                convertToBASE64(isSendSunsetEvent()
+                                                  ? std::string("true")
+                                                  : std::string("false"))
+                                  .c_str());
+                    } else {
+                        disableSunSetEvent();
+                        sprintf(buf,
+                                HLO_READ_VAR_REPLY_TEMPLATE,
+                                "enable-sunset",
+                                "OK",
+                                VSCP_DAEMON_VARIABLE_CODE_BOOLEAN,
+                                convertToBASE64(isSendSunsetEvent()
+                                                  ? std::string("true")
+                                                  : std::string("false"))
+                                  .c_str());
+                    }
+                }
+            } else if ("ENABLE-SUNRISE-TWILIGHT" == hlo.m_name) {
+                if (VSCP_DAEMON_VARIABLE_CODE_BOOLEAN != hlo.m_varType) {
+                    // Wrong variable type
+                    sprintf(buf,
+                            HLO_READ_VAR_ERR_REPLY_TEMPLATE,
+                            "enable-sunrise-twilight",
+                            ERR_VARIABLE_WRONG_TYPE,
+                            "Variable type should be boolean.");
+                } else {
+                    vscp_trim(hlo.m_value);
+                    vscp_makeUpper(hlo.m_value);
+                    if ("TRUE" == hlo.m_value) {
+                        enableSunRiseTwilightEvent();
+                        sprintf(buf,
+                                HLO_READ_VAR_REPLY_TEMPLATE,
+                                "enable-sunrise-twilight",
+                                "OK",
+                                VSCP_DAEMON_VARIABLE_CODE_BOOLEAN,
+                                convertToBASE64(isSendSunriseTwilightEvent()
+                                                  ? std::string("true")
+                                                  : std::string("false"))
+                                  .c_str());
+                    } else {
+                        disableSunRiseEvent();
+                        sprintf(buf,
+                                HLO_READ_VAR_REPLY_TEMPLATE,
+                                "enable-sunrise-twilight",
+                                "OK",
+                                VSCP_DAEMON_VARIABLE_CODE_BOOLEAN,
+                                convertToBASE64(isSendSunriseTwilightEvent()
+                                                  ? std::string("true")
+                                                  : std::string("false"))
+                                  .c_str());
+                    }
+                }
+            } else if ("ENABLE-SUNSET-TWILIGHT" == hlo.m_name) {
+                if (VSCP_DAEMON_VARIABLE_CODE_BOOLEAN != hlo.m_varType) {
+                    // Wrong variable type
+                    sprintf(buf,
+                            HLO_READ_VAR_ERR_REPLY_TEMPLATE,
+                            "enable-sunset-twilight",
+                            ERR_VARIABLE_WRONG_TYPE,
+                            "Variable type should be boolean.");
+                } else {
+                    vscp_trim(hlo.m_value);
+                    vscp_makeUpper(hlo.m_value);
+                    if ("TRUE" == hlo.m_value) {
+                        enableSunSetTwilightEvent();
+                        sprintf(buf,
+                                HLO_READ_VAR_REPLY_TEMPLATE,
+                                "enable-sunset-twilight",
+                                "OK",
+                                VSCP_DAEMON_VARIABLE_CODE_BOOLEAN,
+                                convertToBASE64(isSendSunsetTwilightEvent()
+                                                  ? std::string("true")
+                                                  : std::string("false"))
+                                  .c_str());
+                    } else {
+                        disableSunSetTwilightEvent();
+                        sprintf(buf,
+                                HLO_READ_VAR_REPLY_TEMPLATE,
+                                "enable-sunset-twilight",
+                                "OK",
+                                VSCP_DAEMON_VARIABLE_CODE_BOOLEAN,
+                                convertToBASE64(isSendSunsetTwilightEvent()
+                                                  ? std::string("true")
+                                                  : std::string("false"))
+                                  .c_str());
+                    }
+                }
+            } else if ("ENABLE-NOON" == hlo.m_name) {
+                if (VSCP_DAEMON_VARIABLE_CODE_BOOLEAN != hlo.m_varType) {
+                    // Wrong variable type
+                    sprintf(buf,
+                            HLO_READ_VAR_ERR_REPLY_TEMPLATE,
+                            "enable-noon",
+                            ERR_VARIABLE_WRONG_TYPE,
+                            "Variable type should be boolean.");
+                } else {
+                    vscp_trim(hlo.m_value);
+                    vscp_makeUpper(hlo.m_value);
+                    if ("TRUE" == hlo.m_value) {
+                        enableCalculatedNoonEvent();
+                        sprintf(buf,
+                                HLO_READ_VAR_REPLY_TEMPLATE,
+                                "enable-noon",
+                                "OK",
+                                VSCP_DAEMON_VARIABLE_CODE_BOOLEAN,
+                                convertToBASE64(isSendCalculatedNoonEvent()
+                                                  ? std::string("true")
+                                                  : std::string("false"))
+                                  .c_str());
+                    } else {
+                        disableCalculatedNoonEvent();
+                        sprintf(buf,
+                                HLO_READ_VAR_REPLY_TEMPLATE,
+                                "enable-sunrise",
+                                "OK",
+                                VSCP_DAEMON_VARIABLE_CODE_BOOLEAN,
+                                convertToBASE64(isSendCalculatedNoonEvent()
+                                                  ? std::string("true")
+                                                  : std::string("false"))
+                                  .c_str());
+                    }
+                }
+            } else if ("LONGITUDE" == hlo.m_name) {
+                if (VSCP_DAEMON_VARIABLE_CODE_DOUBLE != hlo.m_varType) {
+                    // Wrong variable type
+                    sprintf(buf,
+                            HLO_READ_VAR_ERR_REPLY_TEMPLATE,
+                            "enable-noon",
+                            ERR_VARIABLE_WRONG_TYPE,
+                            "Variable type should be boolean.");
+                }
                 sprintf(buf,
                         HLO_READ_VAR_REPLY_TEMPLATE,
                         "longitude",
@@ -1070,17 +1429,16 @@ CAutomation::handleHLO(vscpEvent *pEvent)
                         "last-calculation",
                         "OK",
                         13,
-                        convertToBASE64(getLastCalculation().getISODateTime()).c_str());
+                        convertToBASE64(getLastCalculation().getISODateTime())
+                          .c_str());
             } else {
-                sprintf(buf,
-                        HLO_READ_VAR_ERR_REPLY_TEMPLATE,
-                        hlo.m_name.c_str(),
-                        1,
-                        convertToBASE64(std::string("Unknown variable")).c_str());
+                sprintf(
+                  buf,
+                  HLO_READ_VAR_ERR_REPLY_TEMPLATE,
+                  hlo.m_name.c_str(),
+                  1,
+                  convertToBASE64(std::string("Unknown variable")).c_str());
             }
-            break;
-
-        case HLO_OP_WRITE_VAR:
             break;
 
         case HLO_OP_SAVE:
