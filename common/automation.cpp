@@ -65,7 +65,7 @@
 #include <expat.h>
 
 #include "automation.h"
-#include <variablecodes.h>
+#include <remotevariablecodes.h>
 #include <vscp.h>
 #include <vscp_class.h>
 #include <vscp_type.h>

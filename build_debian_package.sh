@@ -7,7 +7,7 @@ RELEASE_VERSION=`head -n4  VERSION.m4 |  grep release_version | tr -d "m4_define
 BUILD_VERSION=`head -n4  VERSION.m4 |  grep build_version | tr -d "m4_define[build_version], ()"`
 
 NAME_PLUS_VER=vscpl2drv-automation-$MAJOR_VERSION.$MINOR_VERSION.$RELEASE_VERSION
-BUILD_FOLDER=/tmp/__build__/`date +vscp_build_%y%m%d_%H%M%S`
+BUILD_FOLDER=dist/`date +vscp_build_%y%m%d_%H%M%S`
 
 echo ---$NAME_PLUS_VER
 

@@ -45,11 +45,7 @@
 
 #include <guid.h>
 #include <vscpdatetime.h>
-
-class CControlObject;
-
-
-
+#include <vscphelper.h>
 
 
 ///////////////////////////////////////////////////////////////////////////////
