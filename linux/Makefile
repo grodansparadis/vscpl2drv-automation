@@ -51,11 +51,12 @@ datadir = ${prefix}/share
 includedir = ${prefix}/include
 DLLPREFIX = lib
 
-LIB_SONAME = "vscpl2drv-automation"
+LIB_PLUS_VER = "vscpl2drv-automation.so.$(MAJOR_VERSION).$(MINOR_VERSION).$(RELEASE_VERSION)"
+LIB_SONAME = "vscpl2drv-automation.so.$(MAJOR_VERSION)"
 
 ### Variables: ###
 
-SOCKETCAN_OBJECTS = vscpl2drv-automation.o\
+AUTOMATION_OBJECTS = vscpl2drv-automation.o\
 	automation.o\
 	vscphelper.o\
 	vscpdatetime.o\
@@ -69,17 +70,14 @@ SOCKETCAN_OBJECTS = vscpl2drv-automation.o\
 
 ### Targets: ###
 
-all: vscpl2drv-automation.so test libvscpl2drv-automation.a man
+all: $(LIB_PLUS_VER) test man
 
-# static lib
-libvscpl2drv-automation.a:	vscpl2drv-automation.so
-	ar rcs libvscpl2drv-automation.a $(SOCKETCAN_OBJECTS)
+test:  test.o $(AUTOMATION_OBJECTS)
+	$(CXX) -o $@ test.o $(AUTOMATION_OBJECTS) $(LDFLAGS) -lexpat -lrt -lm -lcrypto -lpthread -ldl  $(EXTRALIBS)
 
-test:  test.o $(SOCKETCAN_OBJECTS)
-	$(CXX) -o $@ test.o $(SOCKETCAN_OBJECTS) $(LDFLAGS) -lexpat -lrt -lm -lcrypto -lpthread -ldl  $(EXTRALIBS)
-
-vscpl2drv-automation.so: $(SOCKETCAN_OBJECTS)
-	$(CXX) -Wl,-soname,$(LIB_SONAME) -o $@ $(SOCKETCAN_OBJECTS) $(DLFLAGS) -lexpat -lrt -lm -lcrypto -lpthread -ldl  $(EXTRALIBS)
+$(LIB_PLUS_VER): $(AUTOMATION_OBJECTS)
+	$(CXX) -Wl,-soname,$(LIB_SONAME) -o $@ $(AUTOMATION_OBJECTS) $(DLFLAGS) -lexpat -lrt -lm -lcrypto -lpthread -ldl  $(EXTRALIBS)
+	ar rcs libvscpl2drv-automation.a $(AUTOMATION_OBJECTS)
 
 automation.o: ../common/automation.cpp ../common/automation.h
 	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -c ../common/automation.cpp -o $@
@@ -115,11 +113,20 @@ vscpmd5.o: ../vscp/src/common/vscpmd5.c ../vscp/src/common/vscpmd5.h
 	$(CC) $(CFLAGS) -c ../vscp/src/common/vscpmd5.c -o $@
 
 install: all
-	$(STRIP) vscpl2drv-automation.so
-	$(INSTALL_DIR) $(VSCP_PROJ_BASE_DIR)/drivers/level2/
-	$(INSTALL_PROGRAM) vscpl2drv-automation.so $(VSCP_PROJ_BASE_DIR)/drivers/level2/
+	$(INSTALL_DIR) $(DESTDIR)$(libdir)
+	$(STRIP) $(LIB_PLUS_VER)
+	$(INSTALL_PROGRAM) $(LIB_PLUS_VER) $(DESTDIR)$(libdir)
+	ln -fs $(libdir)/$(LIB_PLUS_VER) $(DESTDIR)$(libdir)/vscpl2drv-automation.so
+	ln -fs $(libdir)/$(LIB_PLUS_VER) $(DESTDIR)$(libdir)/vscpl2drv-automation.so.$(MAJOR_VERSION)
+	ln -fs $(libdir)/$(LIB_PLUS_VER) $(DESTDIR)$(libdir)/vscpl2drv-automation.so.$(MAJOR_VERSION).$(MINOR_VERSION
+	$(INSTALL_PROGRAM) vscpl2drv-automation.a $(DESTDIR)$(libdir)
 
 uninstall:
+	rm -f  $(DESTDIR)$(libdir)/vscpl2drv-automation.so
+	rm -f  $(DESTDIR)$(libdir)/$(LIB_PLUS_VER)
+	rm -f  $(DESTDIR)$(libdir)/vscpl2drv-automation.so.$(MAJOR_VERSION)
+	rm -f  $(DESTDIR)$(libdir)/vscpl2drv-automation.so.$(MAJOR_VERSION).$(MINOR_VERSION)
+	rm -f  $(DESTDIR)$(libdir)/vscpl2drv-automation.a
 	rm -rf $(VSCP_PROJ_BASE_DIR)/drivers/level2/vscpl2drv-automation.so
 
 install-strip: install
@@ -138,7 +145,7 @@ clean:
 	rm -f ../common/*.o
 	rm -f ../vscp/src/common/*.o
 	rm -f ../vscp/src/vscp/common/*.o
-	rm -f vscpl2drv-automation.so
+	rm -f $(LIB_PLUS_VER)
 	rm -f vscpl2drv-automation.a
 	rm -f test
 	rm -f *.deb

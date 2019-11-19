@@ -1,4 +1,4 @@
-Source: vscpl2drv-automation
+Source: vscpl2drv-automation%MAJOR-VERSION
 Section: utils
 Priority: optional
 Maintainer: Ake Hedman <akhe@grodansparadis.com>
@@ -8,7 +8,7 @@ Homepage: https://www.vscp.org
 Vcs-Browser: https://github.com/grodansparadis/vscpl2drv-automation
 Vcs-Git: https://github.com/grodansparadis/vscpl2drv-automation.git
 
-Package: vscpl2drv-automation
+Package: vscpl2drv-automation%MAJOR-VERSION
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}, libc6-dev (>= 2.14),
  libstdc++6 (>= 5.2), libgcc1 (>= 1:3.0), libssl-dev (>=1.0)

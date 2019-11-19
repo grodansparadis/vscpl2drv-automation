@@ -3,8 +3,8 @@
 <img src="https://vscp.org/images/logo.png" width="100">
 
     Available for: Linux, Windows
-    Driver Linux: vscpl2drv-automation.so
-    Driver Windows: vscpl2drv-automation.dll
+    Driver Linux: vscpl2drv-automation1.so
+    Driver Windows: vscpl2drv-automation1.dll
 
 A driver that send automation events from location data that is automatically calculated once every twenty four hours. It is possible to configure most details including which of the events that should be sent.
 
@@ -153,7 +153,7 @@ See information from Linux. The only difference is the disk location from where 
 ## Install the driver on Linux
 You can install the driver using the debian package with
 
-> sudo dpkg -i vscpl2drv-automation
+> sudo dpkg -i vscpl2drv-automation1
 
 the driver will be installed to /usr/lib
 
