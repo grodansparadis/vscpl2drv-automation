@@ -5,4 +5,3 @@
 
 override_dh_auto_install:
 	strip linux/vscpl2drv-automation.so.%MAJOR-VERSION.%MINOR-VERSION.%RELEASE-VERSION
-	install -D -m 0755 linux/vscpl2drv-automation.so.%MAJOR-VERSION.%MINOR-VERSION.%RELEASE-VERSION $$(pwd)/debian/vscpl2drv-automation/usr/lib/vscpl2drv-automation.so.%MAJOR-VERSION.%MINOR-VERSION.%RELEASE-VERSION
