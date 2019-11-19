@@ -62,6 +62,12 @@ x86_64)
 i*86)
     BITS=32
     ;;
+armv6l)
+    BITS=32
+    ;; 
+armv7l)
+    BITS=64
+    ;;       
 *)
     BITS=?
     ;;
@@ -78,7 +84,8 @@ i*86)
     ARCH=x86  # or IA32 or Intel32 or whatever
     ;;
 *)
-    # leave ARCH as-is  armv6l/armv7l
+    # leave   armv6l/armv7l
+    ARCH=`uname -m`
     ;;
 esac
 
