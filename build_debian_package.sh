@@ -40,14 +40,6 @@ echo "---Now do 'dpkg-buildpackage -us -uc' or 'dpkg-buildpackage -b'"
 #debuild clean
 debuild -us -uc
 
-echo "If all is alright check /tmp/__BUILD__/ for Debian package "
+echo "If all is alright check dist folder for Debian package "
 
-#cp -r vscpl2drv-automation /tmp/__build__/vscpl2drv-automation-${MAJOR_VERSION}.${MINOR_VERSION}.${BUILD_VERSION}
-#cd /tmp/__build__
-#tar czvf vscpl2drv-automation_${MAJOR_VERSION}.${MINOR_VERSION}.${BUILD_VERSION}.tar.gz vscpl2drv-automation_${MAJOR_VERSION}.${MINOR_VERSION}.${BUILD_VERSION}
-#rm -rf vscpl2drv-automation_${MAJOR_VERSION}.${MINOR_VERSION}.${BUILD_VERSION}vscpl2drv-automation_${MAJOR_VERSION}.${MINOR_VERSION}.${BUILD_VERSION}
-#tar xzvf vscpl2drv-automation_${MAJOR_VERSION}.${MINOR_VERSION}.${BUILD_VERSION}.tar.gz
-#cd vscpl2drv-automation-${MAJOR_VERSION}.${MINOR_VERSION}.${BUILD_VERSION}
-#dh_make -f ../vscpl2drv-automation_${MAJOR_VERSION}.${MINOR_VERSION}.${BUILD_VERSION}.tar.gz
-#cp -r debian_orig/* debian
-#debuild -us -uc
+

@@ -171,6 +171,15 @@ tbd
 ## How to build the driver on Linux
 To build this driver you to clone the driver source
 
+The build used **pandoc** for man-page generation so you should install it first with
+
+```
+sudo apt install pandoc
+```
+
+If you skip it the build will give you some errors (whish you can ignore if you don't care about the man page)
+
+
 ```
 git clone --recurse-submodules -j8 https://github.com/grodansparadis/vscpl2drv-automation.git
 cd vscpl2drv-automation

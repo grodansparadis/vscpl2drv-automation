@@ -30,6 +30,8 @@
 *.exe
 *.out
 *.app
+linux/test
+
 
 # Dist folder
 dist/
