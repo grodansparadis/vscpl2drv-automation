@@ -1,3 +1,3 @@
-/usr/lib/x86_64-linux-gnu/vscpl2drv-automation.so.%MAJOR-VERSION.%MINOR-VERSION.%RELEASE-VERSION /usr/lib/x86_64-linux-gnu/vscpl2drv-automation.so.%MAJOR-VERSION.%MINOR-VERSION
-/usr/lib/x86_64-linux-gnu/vscpl2drv-automation.so.%MAJOR-VERSION.%MINOR-VERSION.%RELEASE-VERSION /usr/lib/x86_64-linux-gnu/vscpl2drv-automation.so.%MAJOR-VERSION
-/usr/lib/x86_64-linux-gnu/vscpl2drv-automation.so.%MAJOR-VERSION.%MINOR-VERSION.%RELEASE-VERSION /usr/lib/x86_64-linux-gnu/vscpl2drv-automation.so
+/usr/lib/%SUBFOLDER/vscpl2drv-automation.so.%MAJOR-VERSION.%MINOR-VERSION.%RELEASE-VERSION /usr/lib/%SUBFOLDER/vscpl2drv-automation.so.%MAJOR-VERSION.%MINOR-VERSION
+/usr/lib/%SUBFOLDER/vscpl2drv-automation.so.%MAJOR-VERSION.%MINOR-VERSION.%RELEASE-VERSION /usr/lib/%SUBFOLDER/vscpl2drv-automation.so.%MAJOR-VERSION
+/usr/lib/%SUBFOLDER/vscpl2drv-automation.so.%MAJOR-VERSION.%MINOR-VERSION.%RELEASE-VERSION /usr/lib/%SUBFOLDER/vscpl2drv-automation.so
