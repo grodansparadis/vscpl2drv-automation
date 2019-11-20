@@ -12,7 +12,7 @@ BUILD_FOLDER="dist/`date +vscp_build_%y%m%d_%H%M%S`"
 
 # Debian compability 10 on Raspberry
 # relevant for 'control' and 'compat'
-COMPAT="11"
+COMPAT="8"
 
 # makes correct /usr/lib subfolder (/usr/lib/x86_64-linux-gnu/), none on Raspberry
 # relevant for 'install' and 'links'
@@ -106,7 +106,6 @@ Raspian)
     ;;
 esac
 
-exit
 echo "***   ---$NAME_PLUS_VER"
 
 # Create the build folder

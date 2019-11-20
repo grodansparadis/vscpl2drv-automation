@@ -28,7 +28,7 @@ AC_PROG_MAKE_SET
 AC_PROG_RANLIB
 
 # Check for needed libraries.
-AC_CHECK_LIB([dl], [dlsym])
+#AC_CHECK_LIB([dl], [dlsym])
 AC_CHECK_LIB([pthread], [pthread_create])
 AC_CHECK_LIB([crypto], [MD5_Init])
 AC_CHECK_LIB([m],[sin])

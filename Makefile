@@ -52,7 +52,6 @@ clean:
 
 distclean: clean
 	@sh clean_for_dist
-	rm -f m4/Makefile
 
 deb:
 	@for d in $(PROJ_SUBDIRS); do (echo "====================================================" &&\

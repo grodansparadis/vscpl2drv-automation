@@ -70,7 +70,7 @@ AUTOMATION_OBJECTS = vscpl2drv-automation.o\
 
 ### Targets: ###
 
-all: $(LIB_PLUS_VER) test man
+all: $(LIB_PLUS_VER) test
 
 test:  test.o $(AUTOMATION_OBJECTS)
 	$(CXX) -o $@ test.o $(AUTOMATION_OBJECTS) $(LDFLAGS) @LIBS@ $(EXTRALIBS)
@@ -146,7 +146,7 @@ clean:
 	rm -f ../vscp/src/common/*.o
 	rm -f ../vscp/src/vscp/common/*.o
 	rm -f $(LIB_PLUS_VER)
-	rm -f vscpl2drv-automation.a
+	rm -f libvscpl2drv-automation.a
 	rm -f test
 	rm -f *.deb
 	rm -f *.gz

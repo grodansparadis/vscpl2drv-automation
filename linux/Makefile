@@ -33,7 +33,7 @@ CPPFLAGS = -D__LINUX__ -fPIC   -fno-var-tracking-assignments \
 	$(VERSION_DEFS)
 
 LDFLAGS = 
-LIBS = -lexpat -lrt -lm -lcrypto -lpthread -ldl 
+LIBS = -lexpat -lrt -lm -lcrypto -lpthread 
 EXTRALIBS = 
 
 DLFLAGS = -g -shared -fPIC
@@ -70,13 +70,13 @@ AUTOMATION_OBJECTS = vscpl2drv-automation.o\
 
 ### Targets: ###
 
-all: $(LIB_PLUS_VER) test man
+all: $(LIB_PLUS_VER) test
 
 test:  test.o $(AUTOMATION_OBJECTS)
-	$(CXX) -o $@ test.o $(AUTOMATION_OBJECTS) $(LDFLAGS) -lexpat -lrt -lm -lcrypto -lpthread -ldl  $(EXTRALIBS)
+	$(CXX) -o $@ test.o $(AUTOMATION_OBJECTS) $(LDFLAGS) -lexpat -lrt -lm -lcrypto -lpthread  $(EXTRALIBS)
 
 $(LIB_PLUS_VER): $(AUTOMATION_OBJECTS)
-	$(CXX) -Wl,-soname,$(LIB_SONAME) -o $@ $(AUTOMATION_OBJECTS) $(DLFLAGS) -lexpat -lrt -lm -lcrypto -lpthread -ldl  $(EXTRALIBS)
+	$(CXX) -Wl,-soname,$(LIB_SONAME) -o $@ $(AUTOMATION_OBJECTS) $(DLFLAGS) -lexpat -lrt -lm -lcrypto -lpthread  $(EXTRALIBS)
 	ar rcs libvscpl2drv-automation.a $(AUTOMATION_OBJECTS)
 
 automation.o: ../common/automation.cpp ../common/automation.h
@@ -146,7 +146,7 @@ clean:
 	rm -f ../vscp/src/common/*.o
 	rm -f ../vscp/src/vscp/common/*.o
 	rm -f $(LIB_PLUS_VER)
-	rm -f vscpl2drv-automation.a
+	rm -f libvscpl2drv-automation.a
 	rm -f test
 	rm -f *.deb
 	rm -f *.gz

@@ -33,6 +33,17 @@
                   "message": 5
                 }
               }
-        }
+        },
+        {
+            "taskName": "build debian package",
+            "type": "shell",
+            "command": "./build_debian_package.sh",
+            "args": [],
+            "group": {
+                "kind": "build",
+                "isDefault": false
+            },
+            "problemMatcher": "$gcc"
+        },
     ]
 }
