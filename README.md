@@ -16,6 +16,54 @@ A driver that send automation events from location data that is automatically ca
  - [CLASS1.INFORMATION=20, Type=55 (0x37) - Nautical sunset twilight time](https://grodansparadis.gitbooks.io/the-vscp-specification/class1.information.html#type55)
  - [CLASS1.INFORMATION=20, Type=58 (0x3A) - Calculated Noon](https://grodansparadis.gitbooks.io/the-vscp-specification/class1.information.html#type58)
 
+## Install the driver on Linux
+You can install the driver using the debian package with
+
+> sudo dpkg -i vscpl2drv-automation1
+
+the driver will be installed to /usr/lib
+
+After installing the driver you need to add it to the vscpd.conf file (/etc/vscp/vscpd.conf). Se the *configuration* section above.
+
+You also need to set up a configuration file for the driver. If you don't need to dynamically edit the content of this file a good and safe location for it is in the */etc/vscp/* folder alongside the VSCP daemon configuration file.
+
+If you need to do dynamic configuration we recommend that you create the file in the */var/vscp/vscpl2drv-automation*
+
+A sample configuration file is make available in */usr/share/vscpl2drv-automation* during installation.
+
+## Install the driver on Windows
+tbd
+
+## How to build the driver on Linux
+To build this driver you to clone the driver source
+
+The build used **pandoc** for man-page generation so you should install it first with
+
+```
+sudo apt install pandoc
+```
+
+If you skip it the build will give you some errors (whish you can ignore if you don't care about the man page)
+
+
+```
+git clone --recurse-submodules -j8 https://github.com/grodansparadis/vscpl2drv-automation.git
+cd vscpl2drv-automation
+./configure
+make
+make install
+```
+
+Default install folder is */usr/local/lib*
+
+You need build-essentials and git installed on your system
+
+>sudo apt update && sudo apt -y upgrade
+>sudo apt install build-essential git
+
+## How to build the driver on Windows
+tbd
+
 ## Configuration
 
 ### Linux
@@ -149,54 +197,6 @@ The default filter/mask pair means that all events are received by the driver.
 
 ### Windows
 See information from Linux. The only difference is the disk location from where configuration data is fetched.
-
-## Install the driver on Linux
-You can install the driver using the debian package with
-
-> sudo dpkg -i vscpl2drv-automation1
-
-the driver will be installed to /usr/lib
-
-After installing the driver you need to add it to the vscpd.conf file (/etc/vscp/vscpd.conf). Se the *configuration* section above.
-
-You also need to set up a configuration file for the driver. If you don't need to dynamically edit the content of this file a good and safe location for it is in the */etc/vscp/* folder alongside the VSCP daemon configuration file.
-
-If you need to do dynamic configuration we recommend that you create the file in the */var/vscp/vscpl2drv-automation*
-
-A sample configuration file is make available in */usr/share/vscpl2drv-automation* during installation.
-
-## Install the driver on Windows
-tbd
-
-## How to build the driver on Linux
-To build this driver you to clone the driver source
-
-The build used **pandoc** for man-page generation so you should install it first with
-
-```
-sudo apt install pandoc
-```
-
-If you skip it the build will give you some errors (whish you can ignore if you don't care about the man page)
-
-
-```
-git clone --recurse-submodules -j8 https://github.com/grodansparadis/vscpl2drv-automation.git
-cd vscpl2drv-automation
-./configure
-make
-make install
-```
-
-Default install folder is */usr/local/lib*
-
-You need build-essentials and git installed on your system
-
->sudo apt update && sudo apt -y upgrade
->sudo apt install build-essential git
-
-## How to build the driver on Windows
-tbd
 
 ## Using the vscpl2drv-automation driver
 
