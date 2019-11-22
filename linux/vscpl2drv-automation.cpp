@@ -198,13 +198,11 @@ VSCPOpen(const char *pPathConfig)
 extern "C" int
 VSCPClose(long handle)
 {
-    int rv = 0;
-
     CAutomation *pdrvObj = getDriverObject(handle);
     if (NULL == pdrvObj) return CANAL_ERROR_MEMORY;
     pdrvObj->close();
     removeDriverObject(handle);
-    rv = 1;
+
     return CANAL_ERROR_SUCCESS;
 }
 
@@ -215,8 +213,6 @@ VSCPClose(long handle)
 extern "C" int
 VSCPWrite(long handle, const vscpEvent *pEvent, unsigned long timeout)
 {
-    int rv = 0;
-
     CAutomation *pdrvObj = getDriverObject(handle);
     if (NULL == pdrvObj) return CANAL_ERROR_MEMORY;
 

@@ -82,7 +82,7 @@ section on the following format
 <!-- Level II automation -->
 <driver enable="true"
     name="automation"
-    path-driver="/usr/bin/vscpl2drv-automation.so"
+    path-driver="/usr/lib/vscpl2drv-automation.so"
     path-config="/var/lib/vscpl2drv-automation/drv.conf"
     guid="FF:FF:FF:FF:FF:FF:FF:FC:88:99:AA:BB:CC:DD:EE:FF"
 </driver>
@@ -111,7 +111,6 @@ The configuration file have the following format
     <!-- Version 0.0.1    2019-11-05   -->
     <config debug="true|false"
             write="true|false"
-            guid="FF:FF:FF:FF:FF:FF:FF:FC:88:99:AA:BB:CC:DD:EE:FF"
             zone="1"
             subzone="2"
             longitude="15.1604167"

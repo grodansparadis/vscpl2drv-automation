@@ -45,5 +45,16 @@
             },
             "problemMatcher": "$gcc"
         },
+        {
+            "taskName": "build ubuntu trusty",
+            "type": "shell",
+            "command": "cd dist;sudo OS=ubuntu DIST=trusty ARCH=amd64 pbuilder build *.dsc",
+            "args": [],
+            "group": {
+                "kind": "build",
+                "isDefault": false
+            },
+            "problemMatcher": "$gcc"
+        },
     ]
 }

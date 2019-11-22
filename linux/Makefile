@@ -21,12 +21,22 @@ top_builddir = ..
 CC = gcc
 CXX = g++
 
+WARNINGS_HARD = -Werror -Wall -Wextra -pedantic -Wcast-align -Wcast-qual \
+  -Wctor-dtor-privacy -Wdisabled-optimization -Wformat=2 -Winit-self \
+  -Wlogical-op -Wmissing-include-dirs -Wnoexcept -Wold-style-cast \
+  -Woverloaded-virtual -Wredundant-decls -Wshadow -Wsign-promo \
+  -Wstrict-null-sentinel -Wstrict-overflow=5 -Wundef -Wno-unused \
+  -Wno-variadic-macros -Wno-parentheses -fdiagnostics-show-option
+WARNINGS_MEDIUM = -Wformat-security -Wformat=2 -Wmissing-include-dirs \
+  -Wno-parentheses -Wformat=2 -Wlogical-op
+WARNINGS = -Wall
+
 VERSION_DEFS = -DMAJOR_VERSION=$(MAJOR_VERSION) -DMINOR_VERSION=$(MINOR_VERSION) \
 	-DRELEASE_VERSION=$(RELEASE_VERSION) -DBUILD_VERSION=$(BUILD_VERSION)
-CFLAGS = -std=c99  -DOPENSSL_API_1_1 -fPIC  -DCBC -I.. -I../common \
+CFLAGS = -std=c99  -DOPENSSL_API_1_1 ${WARNINGS} -fPIC -DCBC -I.. -I../common \
 	-I../vscp/src/common -I../vscp/src/vscp/common $(VERSION_DEFS)
-CXXFLAGS = -std=c++11 -D__LINUX__ -fPIC -D_REENTRANT 
-CPPFLAGS = -D__LINUX__ -fPIC   -fno-var-tracking-assignments \
+CXXFLAGS = -std=c++11 ${WARNINGS} -D__LINUX__ -fPIC -D_REENTRANT 
+CPPFLAGS = -D__LINUX__ -fPIC  ${WARNINGS} -fno-var-tracking-assignments \
     -I.. -I@include@ -I../common \
 	-I../vscp/src/common -I../vscp/src/vscp/common \
 	-I../vscp/src/common/nlohmann \
@@ -146,7 +156,7 @@ clean:
 	rm -f ../vscp/src/common/*.o
 	rm -f ../vscp/src/vscp/common/*.o
 	rm -f $(LIB_PLUS_VER)
-	rm -f libvscpl2drv-automation.a
+	rm -f *.a
 	rm -f test
 	rm -f *.deb
 	rm -f *.gz
