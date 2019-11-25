@@ -44,41 +44,12 @@
 #include <unistd.h>
 
 #include <guid.h>
+#include <hlo.h>
 #include <vscpdatetime.h>
 #include <vscphelper.h>
 
-
-///////////////////////////////////////////////////////////////////////////////
-// VSCP automation HLO object
-//
-
-class CHLO
-{
-
-  public:
-    /// Constructor
-    CHLO(void);
-
-    // Destructor
-    virtual ~CHLO(void);
-
-    // ---------------------------------------
-
-    // HLO operation
-    uint8_t m_op;
-
-    // HLO name
-    std::string m_name;
-
-    // Variable type
-    uint8_t m_varType;
-
-    // HLO value
-    std::string m_value;
-
-    // For VSCP remote variables full format
-    bool m_bFull;
-};
+// User defined HLO operations
+#define HLO_USER_CALC_ASTRO     (HLO_OP_USER_DEFINED + 0)
 
 ///////////////////////////////////////////////////////////////////////////////
 // Class that holds one VSCP automation object
@@ -172,6 +143,16 @@ class CAutomation
         Do automation work
     */
     bool doWork(void);
+
+    /*!
+        Svae configuration
+    */
+    bool doSaveConfig(void);
+
+    /*!
+        Load configuration
+    */
+    bool doLoadConfig(void);
 
     /*!
         Parse HLO
@@ -385,6 +366,11 @@ class CAutomation
 
     /// Incoming filter
     vscpEventFilter m_vscpfilter;
+
+    /*!
+        Path to configuration file
+    */
+    std::string m_path;
 
     // Driver GUID - should be unique
     cguid m_guid;

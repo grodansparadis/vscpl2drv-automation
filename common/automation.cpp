@@ -65,6 +65,7 @@
 #include <expat.h>
 
 #include "automation.h"
+#include <hlo.h>
 #include <remotevariablecodes.h>
 #include <vscp.h>
 #include <vscp_class.h>
@@ -108,24 +109,6 @@ static double AirRefr = 34.0 / 60.0; // atmospheric refraction degrees //
 //-----------------------------------------------------------------------------
 //                       End of sunset/sunrise functions
 //-----------------------------------------------------------------------------
-
-///////////////////////////////////////////////////////////////////////////////
-// Constructor
-//
-
-CHLO::CHLO(void)
-{
-    m_op = HLO_OP_NOOP;
-    m_bFull = false;
-}
-
-///////////////////////////////////////////////////////////////////////////////
-// Constructor
-//
-
-CHLO::~CHLO(void) {}
-
-// ----------------------------------------------------------------------------
 
 ///////////////////////////////////////////////////////////////////////////////
 // Constructor
@@ -357,36 +340,18 @@ endSetupParser(void* data, const char* name)
 bool
 CAutomation::open(const std::string& path, cguid& guid)
 {
-    FILE* fp;
-
     // Set GUID
     m_guid = guid;
 
+    // Set path to config file
+    m_path = path;
+
     // Read configuration file
-    fp = fopen(path.c_str(), "r");
-    if (NULL == fp) {
+    if (!doLoadConfig()) {
         syslog(LOG_ERR,
-               "[vscpl2drv-automation] Failed to open configuration file [%s]",
+               "[vscpl2drv-automation] Failed to load configuration file [%s]",
                path.c_str());
-        return false;
     }
-
-    XML_Parser xmlParser = XML_ParserCreate("UTF-8");
-    XML_SetUserData(xmlParser, this);
-    XML_SetElementHandler(xmlParser, startSetupParser, endSetupParser);
-
-    void* buf = XML_GetBuffer(xmlParser, XML_BUFF_SIZE);
-
-    size_t file_size = 0;
-    file_size = fread(buf, sizeof(char), XML_BUFF_SIZE, fp);
-
-    if (!XML_ParseBuffer(xmlParser, file_size, file_size == 0)) {
-        syslog(LOG_ERR, "[vscpl2drv-automation] Failed parse XML setup.");
-        XML_ParserFree(xmlParser);
-        return false;
-    }
-
-    XML_ParserFree(xmlParser);
 
     // start the workerthread
     if (pthread_create(&m_threadWork, NULL, workerThread, this)) {
@@ -801,6 +766,53 @@ endHLOParser(void* data, const char* name)
 // ----------------------------------------------------------------------------
 
 ///////////////////////////////////////////////////////////////////////////////
+// loadConfiguration
+//
+
+bool
+CAutomation::doLoadConfig(void)
+{
+    FILE* fp;
+    
+    fp = fopen(m_path.c_str(), "r");
+    if (NULL == fp) {
+        syslog(LOG_ERR,
+               "[vscpl2drv-automation] Failed to open configuration file [%s]",
+               m_path.c_str());
+        return false;
+    }
+
+    XML_Parser xmlParser = XML_ParserCreate("UTF-8");
+    XML_SetUserData(xmlParser, this);
+    XML_SetElementHandler(xmlParser, startSetupParser, endSetupParser);
+
+    void* buf = XML_GetBuffer(xmlParser, XML_BUFF_SIZE);
+
+    size_t file_size = 0;
+    file_size = fread(buf, sizeof(char), XML_BUFF_SIZE, fp);
+
+    if (!XML_ParseBuffer(xmlParser, file_size, file_size == 0)) {
+        syslog(LOG_ERR, "[vscpl2drv-automation] Failed parse XML setup.");
+        XML_ParserFree(xmlParser);
+        return false;
+    }
+
+    XML_ParserFree(xmlParser);
+
+    return true;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// saveConfiguration
+//
+
+bool
+CAutomation::doSaveConfig(void)
+{
+    return true;
+}
+
+///////////////////////////////////////////////////////////////////////////////
 // parseHLO
 //
 
@@ -903,7 +915,7 @@ CAutomation::handleHLO(vscpEvent* pEvent)
                   HLO_READ_VAR_REPLY_TEMPLATE,
                   "sunrise",
                   "OK",
-                  VSCP_DAEMON_VARIABLE_CODE_DATETIME,
+                  VSCP_REMOTE_VARIABLE_CODE_DATETIME,
                   convertToBASE64(getSunriseTime().getISODateTime()).c_str());
             } else if ("SUNSET" == hlo.m_name) {
                 sprintf(
@@ -911,14 +923,14 @@ CAutomation::handleHLO(vscpEvent* pEvent)
                   HLO_READ_VAR_REPLY_TEMPLATE,
                   "sunset",
                   "OK",
-                  VSCP_DAEMON_VARIABLE_CODE_DATETIME,
+                  VSCP_REMOTE_VARIABLE_CODE_DATETIME,
                   convertToBASE64(getSunsetTime().getISODateTime()).c_str());
             } else if ("SUNRISE-TWILIGHT" == hlo.m_name) {
                 sprintf(buf,
                         HLO_READ_VAR_REPLY_TEMPLATE,
                         "sunrise-twilight",
                         "OK",
-                        VSCP_DAEMON_VARIABLE_CODE_DATETIME,
+                        VSCP_REMOTE_VARIABLE_CODE_DATETIME,
                         convertToBASE64(
                           getCivilTwilightSunriseTime().getISODateTime())
                           .c_str());
@@ -928,7 +940,7 @@ CAutomation::handleHLO(vscpEvent* pEvent)
                   HLO_READ_VAR_REPLY_TEMPLATE,
                   "sunset-twilight",
                   "OK",
-                  VSCP_DAEMON_VARIABLE_CODE_DATETIME,
+                  VSCP_REMOTE_VARIABLE_CODE_DATETIME,
                   convertToBASE64(getCivilTwilightSunsetTime().getISODateTime())
                     .c_str());
             } else if ("NOON" == hlo.m_name) {
@@ -936,14 +948,14 @@ CAutomation::handleHLO(vscpEvent* pEvent)
                         HLO_READ_VAR_REPLY_TEMPLATE,
                         "noon",
                         "OK",
-                        VSCP_DAEMON_VARIABLE_CODE_DATETIME,
+                        VSCP_REMOTE_VARIABLE_CODE_DATETIME,
                         convertToBASE64(m_noonTime.getISODateTime()).c_str());
             } else if ("SENT-SUNRISE" == hlo.m_name) {
                 sprintf(buf,
                         HLO_READ_VAR_REPLY_TEMPLATE,
                         "sent-sunrise",
                         "OK",
-                        VSCP_DAEMON_VARIABLE_CODE_DATETIME,
+                        VSCP_REMOTE_VARIABLE_CODE_DATETIME,
                         convertToBASE64(getSentSunriseTime().getISODateTime())
                           .c_str());
             } else if ("SENT-SUNSET" == hlo.m_name) {
@@ -951,7 +963,7 @@ CAutomation::handleHLO(vscpEvent* pEvent)
                         HLO_READ_VAR_REPLY_TEMPLATE,
                         "sent-sunset",
                         "OK",
-                        VSCP_DAEMON_VARIABLE_CODE_DATETIME,
+                        VSCP_REMOTE_VARIABLE_CODE_DATETIME,
                         convertToBASE64(getSentSunsetTime().getISODateTime())
                           .c_str());
             } else if ("SENT-SUNRISE-TWILIGHT" == hlo.m_name) {
@@ -959,7 +971,7 @@ CAutomation::handleHLO(vscpEvent* pEvent)
                         HLO_READ_VAR_REPLY_TEMPLATE,
                         "sent-sunrise-twilight",
                         "OK",
-                        VSCP_DAEMON_VARIABLE_CODE_DATETIME,
+                        VSCP_REMOTE_VARIABLE_CODE_DATETIME,
                         convertToBASE64(
                           getSentCivilTwilightSunriseTime().getISODateTime())
                           .c_str());
@@ -968,7 +980,7 @@ CAutomation::handleHLO(vscpEvent* pEvent)
                         HLO_READ_VAR_REPLY_TEMPLATE,
                         "sent-sunset-twilight",
                         "OK",
-                        VSCP_DAEMON_VARIABLE_CODE_DATETIME,
+                        VSCP_REMOTE_VARIABLE_CODE_DATETIME,
                         convertToBASE64(
                           getSentCivilTwilightSunsetTime().getISODateTime())
                           .c_str());
@@ -977,7 +989,7 @@ CAutomation::handleHLO(vscpEvent* pEvent)
                         HLO_READ_VAR_REPLY_TEMPLATE,
                         "sent-sunrise-twilight",
                         "OK",
-                        VSCP_DAEMON_VARIABLE_CODE_DATETIME,
+                        VSCP_REMOTE_VARIABLE_CODE_DATETIME,
                         convertToBASE64(
                           getSentCivilTwilightSunriseTime().getISODateTime())
                           .c_str());
@@ -986,14 +998,14 @@ CAutomation::handleHLO(vscpEvent* pEvent)
                         HLO_READ_VAR_REPLY_TEMPLATE,
                         "sent-noon",
                         "OK",
-                        VSCP_DAEMON_VARIABLE_CODE_DATETIME,
+                        VSCP_REMOTE_VARIABLE_CODE_DATETIME,
                         getSentNoonTime().getISODateTime().c_str());
             } else if ("ENABLE-SUNRISE" == hlo.m_name) {
                 sprintf(buf,
                         HLO_READ_VAR_REPLY_TEMPLATE,
                         "enable-sunrise",
                         "OK",
-                        VSCP_DAEMON_VARIABLE_CODE_BOOLEAN,
+                        VSCP_REMOTE_VARIABLE_CODE_BOOLEAN,
                         convertToBASE64(m_bSunRiseEvent ? std::string("true")
                                                         : std::string("false"))
                           .c_str());
@@ -1002,7 +1014,7 @@ CAutomation::handleHLO(vscpEvent* pEvent)
                         HLO_READ_VAR_REPLY_TEMPLATE,
                         "enable-sunset",
                         "OK",
-                        VSCP_DAEMON_VARIABLE_CODE_BOOLEAN,
+                        VSCP_REMOTE_VARIABLE_CODE_BOOLEAN,
                         convertToBASE64(m_bSunSetEvent ? std::string("true")
                                                        : std::string("false"))
                           .c_str());
@@ -1011,7 +1023,7 @@ CAutomation::handleHLO(vscpEvent* pEvent)
                         HLO_READ_VAR_REPLY_TEMPLATE,
                         "enable-sunrise-twilight",
                         "OK",
-                        VSCP_DAEMON_VARIABLE_CODE_BOOLEAN,
+                        VSCP_REMOTE_VARIABLE_CODE_BOOLEAN,
                         convertToBASE64(m_bSunRiseTwilightEvent
                                           ? std::string("true")
                                           : std::string("false"))
@@ -1021,7 +1033,7 @@ CAutomation::handleHLO(vscpEvent* pEvent)
                         HLO_READ_VAR_REPLY_TEMPLATE,
                         "enable-sunset-twilight",
                         "OK",
-                        VSCP_DAEMON_VARIABLE_CODE_BOOLEAN,
+                        VSCP_REMOTE_VARIABLE_CODE_BOOLEAN,
                         convertToBASE64(m_bSunSetTwilightEvent
                                           ? std::string("true")
                                           : std::string("false"))
@@ -1031,7 +1043,7 @@ CAutomation::handleHLO(vscpEvent* pEvent)
                         HLO_READ_VAR_REPLY_TEMPLATE,
                         "enable-noon",
                         "OK",
-                        VSCP_DAEMON_VARIABLE_CODE_BOOLEAN,
+                        VSCP_REMOTE_VARIABLE_CODE_BOOLEAN,
                         convertToBASE64(m_bNoonEvent ? std::string("true")
                                                      : std::string("false"))
                           .c_str());
@@ -1040,56 +1052,56 @@ CAutomation::handleHLO(vscpEvent* pEvent)
                         HLO_READ_VAR_REPLY_TEMPLATE,
                         "longitude",
                         "OK",
-                        VSCP_DAEMON_VARIABLE_CODE_DOUBLE,
+                        VSCP_REMOTE_VARIABLE_CODE_DOUBLE,
                         convertToBASE64(getLongitudeStr()).c_str());
             } else if ("LATITUDE" == hlo.m_name) {
                 sprintf(buf,
                         HLO_READ_VAR_REPLY_TEMPLATE,
                         "latitude",
                         "OK",
-                        VSCP_DAEMON_VARIABLE_CODE_DOUBLE,
+                        VSCP_REMOTE_VARIABLE_CODE_DOUBLE,
                         convertToBASE64(getLatitudeStr()).c_str());
             } else if ("ZONE" == hlo.m_name) {
                 sprintf(buf,
                         HLO_READ_VAR_REPLY_TEMPLATE,
                         "zone",
                         "OK",
-                        VSCP_DAEMON_VARIABLE_CODE_INTEGER,
+                        VSCP_REMOTE_VARIABLE_CODE_INTEGER,
                         convertToBASE64(getZoneStr()).c_str());
             } else if ("SUBZONE" == hlo.m_name) {
                 sprintf(buf,
                         HLO_READ_VAR_REPLY_TEMPLATE,
                         "subzone",
                         "OK",
-                        VSCP_DAEMON_VARIABLE_CODE_INTEGER,
+                        VSCP_REMOTE_VARIABLE_CODE_INTEGER,
                         convertToBASE64(getSubZoneStr()).c_str());
             } else if ("DAYLENGTH" == hlo.m_name) {
                 sprintf(buf,
                         HLO_READ_VAR_REPLY_TEMPLATE,
                         "daylength",
                         "OK",
-                        VSCP_DAEMON_VARIABLE_CODE_DOUBLE,
+                        VSCP_REMOTE_VARIABLE_CODE_DOUBLE,
                         convertToBASE64(getDayLengthStr()).c_str());
             } else if ("DECLINATION" == hlo.m_name) {
                 sprintf(buf,
                         HLO_READ_VAR_REPLY_TEMPLATE,
                         "declination",
                         "OK",
-                        VSCP_DAEMON_VARIABLE_CODE_DOUBLE,
+                        VSCP_REMOTE_VARIABLE_CODE_DOUBLE,
                         convertToBASE64(getDeclinationStr()).c_str());
             } else if ("SUN-MAX-ALTITUDE" == hlo.m_name) {
                 sprintf(buf,
                         HLO_READ_VAR_REPLY_TEMPLATE,
                         "sun-max-altitude",
                         "OK",
-                        VSCP_DAEMON_VARIABLE_CODE_DOUBLE,
+                        VSCP_REMOTE_VARIABLE_CODE_DOUBLE,
                         convertToBASE64(getSunMaxAltitudeStr()).c_str());
             } else if ("LAST-CALCULATION" == hlo.m_name) {
                 sprintf(buf,
                         HLO_READ_VAR_REPLY_TEMPLATE,
                         "last-calculation",
                         "OK",
-                        VSCP_DAEMON_VARIABLE_CODE_DATETIME,
+                        VSCP_REMOTE_VARIABLE_CODE_DATETIME,
                         convertToBASE64(getLastCalculation().getISODateTime())
                           .c_str());
             } else {
@@ -1108,27 +1120,27 @@ CAutomation::handleHLO(vscpEvent* pEvent)
                 sprintf(buf,
                         HLO_READ_VAR_ERR_REPLY_TEMPLATE,
                         "sunrise",
-                        VSCP_DAEMON_VARIABLE_CODE_BOOLEAN,
+                        VSCP_REMOTE_VARIABLE_CODE_BOOLEAN,
                         "Variable is read only.");
             } else if ("SUNSET" == hlo.m_name) {
                 // Read Only variable
                 sprintf(buf,
                         HLO_READ_VAR_ERR_REPLY_TEMPLATE,
                         "sunset",
-                        VSCP_DAEMON_VARIABLE_CODE_BOOLEAN,
+                        VSCP_REMOTE_VARIABLE_CODE_BOOLEAN,
                         "Variable is read only.");
             } else if ("SUNRISE-TWILIGHT" == hlo.m_name) {
                 // Read Only variable
                 sprintf(buf,
                         HLO_READ_VAR_ERR_REPLY_TEMPLATE,
                         "sunrise",
-                        VSCP_DAEMON_VARIABLE_CODE_BOOLEAN,
+                        VSCP_REMOTE_VARIABLE_CODE_BOOLEAN,
                         "Variable is read only.");
                 sprintf(buf,
                         HLO_READ_VAR_REPLY_TEMPLATE,
                         "sunrise-twilight",
                         "OK",
-                        VSCP_DAEMON_VARIABLE_CODE_DATETIME,
+                        VSCP_REMOTE_VARIABLE_CODE_DATETIME,
                         convertToBASE64(
                           getCivilTwilightSunriseTime().getISODateTime())
                           .c_str());
@@ -1137,14 +1149,14 @@ CAutomation::handleHLO(vscpEvent* pEvent)
                 sprintf(buf,
                         HLO_READ_VAR_ERR_REPLY_TEMPLATE,
                         "sunrise",
-                        VSCP_DAEMON_VARIABLE_CODE_BOOLEAN,
+                        VSCP_REMOTE_VARIABLE_CODE_BOOLEAN,
                         "Variable is read only.");
                 sprintf(
                   buf,
                   HLO_READ_VAR_REPLY_TEMPLATE,
                   "sunset-twilight",
                   "OK",
-                  VSCP_DAEMON_VARIABLE_CODE_DATETIME,
+                  VSCP_REMOTE_VARIABLE_CODE_DATETIME,
                   convertToBASE64(getCivilTwilightSunsetTime().getISODateTime())
                     .c_str());
             } else if ("NOON" == hlo.m_name) {
@@ -1152,13 +1164,13 @@ CAutomation::handleHLO(vscpEvent* pEvent)
                 sprintf(buf,
                         HLO_READ_VAR_ERR_REPLY_TEMPLATE,
                         "sunrise",
-                        VSCP_DAEMON_VARIABLE_CODE_BOOLEAN,
+                        VSCP_REMOTE_VARIABLE_CODE_BOOLEAN,
                         "Variable is read only.");
                 sprintf(buf,
                         HLO_READ_VAR_REPLY_TEMPLATE,
                         "noon",
                         "OK",
-                        VSCP_DAEMON_VARIABLE_CODE_DATETIME,
+                        VSCP_REMOTE_VARIABLE_CODE_DATETIME,
                         convertToBASE64(m_noonTime.getISODateTime()).c_str());
             } else if ("SENT-SUNRISE" == hlo.m_name) {
                 // Read Only variable
@@ -1198,7 +1210,7 @@ CAutomation::handleHLO(vscpEvent* pEvent)
                         ERR_VARIABLE_READ_ONLY,
                         "Variable is read only.");
             } else if ("ENABLE-SUNRISE" == hlo.m_name) {
-                if (VSCP_DAEMON_VARIABLE_CODE_BOOLEAN != hlo.m_varType) {
+                if (VSCP_REMOTE_VARIABLE_CODE_BOOLEAN != hlo.m_varType) {
                     // Wrong variable type
                     sprintf(buf,
                             HLO_READ_VAR_ERR_REPLY_TEMPLATE,
@@ -1214,7 +1226,7 @@ CAutomation::handleHLO(vscpEvent* pEvent)
                                 HLO_READ_VAR_REPLY_TEMPLATE,
                                 "enable-sunrise",
                                 "OK",
-                                VSCP_DAEMON_VARIABLE_CODE_BOOLEAN,
+                                VSCP_REMOTE_VARIABLE_CODE_BOOLEAN,
                                 convertToBASE64(isSendSunriseEvent()
                                                   ? std::string("true")
                                                   : std::string("false"))
@@ -1225,7 +1237,7 @@ CAutomation::handleHLO(vscpEvent* pEvent)
                                 HLO_READ_VAR_REPLY_TEMPLATE,
                                 "enable-sunrise",
                                 "OK",
-                                VSCP_DAEMON_VARIABLE_CODE_BOOLEAN,
+                                VSCP_REMOTE_VARIABLE_CODE_BOOLEAN,
                                 convertToBASE64(isSendSunriseEvent()
                                                   ? std::string("true")
                                                   : std::string("false"))
@@ -1233,7 +1245,7 @@ CAutomation::handleHLO(vscpEvent* pEvent)
                     }
                 }
             } else if ("ENABLE-SUNSET" == hlo.m_name) {
-                if (VSCP_DAEMON_VARIABLE_CODE_BOOLEAN != hlo.m_varType) {
+                if (VSCP_REMOTE_VARIABLE_CODE_BOOLEAN != hlo.m_varType) {
                     // Wrong variable type
                     sprintf(buf,
                             HLO_READ_VAR_ERR_REPLY_TEMPLATE,
@@ -1249,7 +1261,7 @@ CAutomation::handleHLO(vscpEvent* pEvent)
                                 HLO_READ_VAR_REPLY_TEMPLATE,
                                 "enable-sunset",
                                 "OK",
-                                VSCP_DAEMON_VARIABLE_CODE_BOOLEAN,
+                                VSCP_REMOTE_VARIABLE_CODE_BOOLEAN,
                                 convertToBASE64(isSendSunsetEvent()
                                                   ? std::string("true")
                                                   : std::string("false"))
@@ -1260,7 +1272,7 @@ CAutomation::handleHLO(vscpEvent* pEvent)
                                 HLO_READ_VAR_REPLY_TEMPLATE,
                                 "enable-sunset",
                                 "OK",
-                                VSCP_DAEMON_VARIABLE_CODE_BOOLEAN,
+                                VSCP_REMOTE_VARIABLE_CODE_BOOLEAN,
                                 convertToBASE64(isSendSunsetEvent()
                                                   ? std::string("true")
                                                   : std::string("false"))
@@ -1268,7 +1280,7 @@ CAutomation::handleHLO(vscpEvent* pEvent)
                     }
                 }
             } else if ("ENABLE-SUNRISE-TWILIGHT" == hlo.m_name) {
-                if (VSCP_DAEMON_VARIABLE_CODE_BOOLEAN != hlo.m_varType) {
+                if (VSCP_REMOTE_VARIABLE_CODE_BOOLEAN != hlo.m_varType) {
                     // Wrong variable type
                     sprintf(buf,
                             HLO_READ_VAR_ERR_REPLY_TEMPLATE,
@@ -1284,7 +1296,7 @@ CAutomation::handleHLO(vscpEvent* pEvent)
                                 HLO_READ_VAR_REPLY_TEMPLATE,
                                 "enable-sunrise-twilight",
                                 "OK",
-                                VSCP_DAEMON_VARIABLE_CODE_BOOLEAN,
+                                VSCP_REMOTE_VARIABLE_CODE_BOOLEAN,
                                 convertToBASE64(isSendSunriseTwilightEvent()
                                                   ? std::string("true")
                                                   : std::string("false"))
@@ -1295,7 +1307,7 @@ CAutomation::handleHLO(vscpEvent* pEvent)
                                 HLO_READ_VAR_REPLY_TEMPLATE,
                                 "enable-sunrise-twilight",
                                 "OK",
-                                VSCP_DAEMON_VARIABLE_CODE_BOOLEAN,
+                                VSCP_REMOTE_VARIABLE_CODE_BOOLEAN,
                                 convertToBASE64(isSendSunriseTwilightEvent()
                                                   ? std::string("true")
                                                   : std::string("false"))
@@ -1303,7 +1315,7 @@ CAutomation::handleHLO(vscpEvent* pEvent)
                     }
                 }
             } else if ("ENABLE-SUNSET-TWILIGHT" == hlo.m_name) {
-                if (VSCP_DAEMON_VARIABLE_CODE_BOOLEAN != hlo.m_varType) {
+                if (VSCP_REMOTE_VARIABLE_CODE_BOOLEAN != hlo.m_varType) {
                     // Wrong variable type
                     sprintf(buf,
                             HLO_READ_VAR_ERR_REPLY_TEMPLATE,
@@ -1319,7 +1331,7 @@ CAutomation::handleHLO(vscpEvent* pEvent)
                                 HLO_READ_VAR_REPLY_TEMPLATE,
                                 "enable-sunset-twilight",
                                 "OK",
-                                VSCP_DAEMON_VARIABLE_CODE_BOOLEAN,
+                                VSCP_REMOTE_VARIABLE_CODE_BOOLEAN,
                                 convertToBASE64(isSendSunsetTwilightEvent()
                                                   ? std::string("true")
                                                   : std::string("false"))
@@ -1330,7 +1342,7 @@ CAutomation::handleHLO(vscpEvent* pEvent)
                                 HLO_READ_VAR_REPLY_TEMPLATE,
                                 "enable-sunset-twilight",
                                 "OK",
-                                VSCP_DAEMON_VARIABLE_CODE_BOOLEAN,
+                                VSCP_REMOTE_VARIABLE_CODE_BOOLEAN,
                                 convertToBASE64(isSendSunsetTwilightEvent()
                                                   ? std::string("true")
                                                   : std::string("false"))
@@ -1338,7 +1350,7 @@ CAutomation::handleHLO(vscpEvent* pEvent)
                     }
                 }
             } else if ("ENABLE-NOON" == hlo.m_name) {
-                if (VSCP_DAEMON_VARIABLE_CODE_BOOLEAN != hlo.m_varType) {
+                if (VSCP_REMOTE_VARIABLE_CODE_BOOLEAN != hlo.m_varType) {
                     // Wrong variable type
                     sprintf(buf,
                             HLO_READ_VAR_ERR_REPLY_TEMPLATE,
@@ -1354,7 +1366,7 @@ CAutomation::handleHLO(vscpEvent* pEvent)
                                 HLO_READ_VAR_REPLY_TEMPLATE,
                                 "enable-noon",
                                 "OK",
-                                VSCP_DAEMON_VARIABLE_CODE_BOOLEAN,
+                                VSCP_REMOTE_VARIABLE_CODE_BOOLEAN,
                                 convertToBASE64(isSendCalculatedNoonEvent()
                                                   ? std::string("true")
                                                   : std::string("false"))
@@ -1365,7 +1377,7 @@ CAutomation::handleHLO(vscpEvent* pEvent)
                                 HLO_READ_VAR_REPLY_TEMPLATE,
                                 "enable-sunrise",
                                 "OK",
-                                VSCP_DAEMON_VARIABLE_CODE_BOOLEAN,
+                                VSCP_REMOTE_VARIABLE_CODE_BOOLEAN,
                                 convertToBASE64(isSendCalculatedNoonEvent()
                                                   ? std::string("true")
                                                   : std::string("false"))
@@ -1373,7 +1385,7 @@ CAutomation::handleHLO(vscpEvent* pEvent)
                     }
                 }
             } else if ("LONGITUDE" == hlo.m_name) {
-                if (VSCP_DAEMON_VARIABLE_CODE_DOUBLE != hlo.m_varType) {
+                if (VSCP_REMOTE_VARIABLE_CODE_DOUBLE != hlo.m_varType) {
                     // Wrong variable type
                     sprintf(buf,
                             HLO_READ_VAR_ERR_REPLY_TEMPLATE,
@@ -1448,12 +1460,15 @@ CAutomation::handleHLO(vscpEvent* pEvent)
             break;
 
         case HLO_OP_SAVE:
+            doSaveConfig();
             break;
 
         case HLO_OP_LOAD:
+            doLoadConfig();
             break;
 
-        case HLO_OP_CALCULATE:
+        case HLO_USER_CALC_ASTRO:
+            doCalc();
             break;
 
         default:

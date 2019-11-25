@@ -70,6 +70,7 @@ AUTOMATION_OBJECTS = vscpl2drv-automation.o\
 	automation.o\
 	vscphelper.o\
 	vscpdatetime.o\
+	hlo.o\
 	guid.o\
 	crc.o\
 	crc8.o\
@@ -100,6 +101,9 @@ vscpdatetime.o: ../vscp/src/vscp/common/vscpdatetime.cpp ../vscp/src/vscp/common
 
 vscphelper.o: ../vscp/src/vscp/common/vscphelper.cpp ../vscp/src/vscp/common/vscphelper.h
 	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -c ../vscp/src/vscp/common/vscphelper.cpp -o $@
+
+hlo.o: ../vscp/src/vscp/common/hlo.cpp ../vscp/src/vscp/common/hlo.h
+	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -c ../vscp/src/vscp/common/hlo.cpp -o $@
 
 guid.o: ../vscp/src/vscp/common/guid.cpp ../vscp/src/vscp/common/guid.h
 	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -c ../vscp/src/vscp/common/guid.cpp -o $@
