@@ -98,7 +98,7 @@ class CAutomation
        Open operations
        @return True on success.
     */
-    bool open(const std::string &path);
+    bool open(const std::string &path, cguid &guid);
 
     /*!
         Close operations

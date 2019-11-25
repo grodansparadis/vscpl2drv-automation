@@ -170,14 +170,15 @@ removeDriverObject(long h)
 //
 
 extern "C" long
-VSCPOpen(const char *pPathConfig)
+VSCPOpen(const char *pPathConfig, const char *pguid )
 {
     long h = 0;
 
     CAutomation *pdrvObj = new CAutomation();
     if (NULL != pdrvObj) {
 
-        if (pdrvObj->open(pPathConfig)) {
+        cguid guid(pguid);
+        if (pdrvObj->open(pPathConfig, guid)) {
 
             if (!(h = addDriverObject(pdrvObj))) {
                 delete pdrvObj;

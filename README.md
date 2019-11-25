@@ -3,8 +3,8 @@
 <img src="https://vscp.org/images/logo.png" width="100">
 
     Available for: Linux, Windows
-    Driver Linux: vscpl2drv-automation1.so
-    Driver Windows: vscpl2drv-automation1.dll
+    Driver Linux: vscpl2drv-automation.so
+    Driver Windows: vscpl2drv-automation.dll
 
 A driver that send automation events from location data that is automatically calculated once every twenty four hours. It is possible to configure most details including which of the events that should be sent.
 
@@ -45,6 +45,7 @@ sudo apt install pandoc
 
 If you skip it the build will give you some errors (whish you can ignore if you don't care about the man page)
 
+Default install folder when you build from source is */usr/local/lib*. You can change this with the --prefix option in the configure step. For example *./configure --prefix /usr* to install to */usr/lib* as the debian install
 
 ```
 git clone --recurse-submodules -j8 https://github.com/grodansparadis/vscpl2drv-automation.git
