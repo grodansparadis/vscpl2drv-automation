@@ -351,9 +351,6 @@ class CAutomation
     bool isSendCalculatedNoonEvent(void) { return m_bCalculatedNoonEvent; };
     vscpdatetime &getSentCalculatedNoonEvent(void) { return m_noonTime_sent; };
 
-    std::string convertToBASE64( std::string str) { return (vscp_base64_std_encode( str ) ? str : std::string("") ); }
-
-
   public:
     /// Debug flag set in config
     bool m_bDebug;

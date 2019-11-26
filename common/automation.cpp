@@ -897,7 +897,6 @@ CAutomation::handleHLO(vscpEvent* pEvent)
             sprintf(buf,
                     HLO_CMD_REPLY_TEMPLATE,
                     "noop",
-                    "",
                     "OK",
                     "NOOP commaned executed correctly.");
 
@@ -916,7 +915,7 @@ CAutomation::handleHLO(vscpEvent* pEvent)
                   "sunrise",
                   "OK",
                   VSCP_REMOTE_VARIABLE_CODE_DATETIME,
-                  convertToBASE64(getSunriseTime().getISODateTime()).c_str());
+                  vscp_convertToBASE64(getSunriseTime().getISODateTime()).c_str());
             } else if ("SUNSET" == hlo.m_name) {
                 sprintf(
                   buf,
@@ -924,14 +923,14 @@ CAutomation::handleHLO(vscpEvent* pEvent)
                   "sunset",
                   "OK",
                   VSCP_REMOTE_VARIABLE_CODE_DATETIME,
-                  convertToBASE64(getSunsetTime().getISODateTime()).c_str());
+                  vscp_convertToBASE64(getSunsetTime().getISODateTime()).c_str());
             } else if ("SUNRISE-TWILIGHT" == hlo.m_name) {
                 sprintf(buf,
                         HLO_READ_VAR_REPLY_TEMPLATE,
                         "sunrise-twilight",
                         "OK",
                         VSCP_REMOTE_VARIABLE_CODE_DATETIME,
-                        convertToBASE64(
+                        vscp_convertToBASE64(
                           getCivilTwilightSunriseTime().getISODateTime())
                           .c_str());
             } else if ("SUNSET-TWILIGHT" == hlo.m_name) {
@@ -941,7 +940,7 @@ CAutomation::handleHLO(vscpEvent* pEvent)
                   "sunset-twilight",
                   "OK",
                   VSCP_REMOTE_VARIABLE_CODE_DATETIME,
-                  convertToBASE64(getCivilTwilightSunsetTime().getISODateTime())
+                  vscp_convertToBASE64(getCivilTwilightSunsetTime().getISODateTime())
                     .c_str());
             } else if ("NOON" == hlo.m_name) {
                 sprintf(buf,
@@ -949,14 +948,14 @@ CAutomation::handleHLO(vscpEvent* pEvent)
                         "noon",
                         "OK",
                         VSCP_REMOTE_VARIABLE_CODE_DATETIME,
-                        convertToBASE64(m_noonTime.getISODateTime()).c_str());
+                        vscp_convertToBASE64(m_noonTime.getISODateTime()).c_str());
             } else if ("SENT-SUNRISE" == hlo.m_name) {
                 sprintf(buf,
                         HLO_READ_VAR_REPLY_TEMPLATE,
                         "sent-sunrise",
                         "OK",
                         VSCP_REMOTE_VARIABLE_CODE_DATETIME,
-                        convertToBASE64(getSentSunriseTime().getISODateTime())
+                        vscp_convertToBASE64(getSentSunriseTime().getISODateTime())
                           .c_str());
             } else if ("SENT-SUNSET" == hlo.m_name) {
                 sprintf(buf,
@@ -964,7 +963,7 @@ CAutomation::handleHLO(vscpEvent* pEvent)
                         "sent-sunset",
                         "OK",
                         VSCP_REMOTE_VARIABLE_CODE_DATETIME,
-                        convertToBASE64(getSentSunsetTime().getISODateTime())
+                        vscp_convertToBASE64(getSentSunsetTime().getISODateTime())
                           .c_str());
             } else if ("SENT-SUNRISE-TWILIGHT" == hlo.m_name) {
                 sprintf(buf,
@@ -972,7 +971,7 @@ CAutomation::handleHLO(vscpEvent* pEvent)
                         "sent-sunrise-twilight",
                         "OK",
                         VSCP_REMOTE_VARIABLE_CODE_DATETIME,
-                        convertToBASE64(
+                        vscp_convertToBASE64(
                           getSentCivilTwilightSunriseTime().getISODateTime())
                           .c_str());
             } else if ("SENT-SUNSET-TWILIGHT" == hlo.m_name) {
@@ -981,7 +980,7 @@ CAutomation::handleHLO(vscpEvent* pEvent)
                         "sent-sunset-twilight",
                         "OK",
                         VSCP_REMOTE_VARIABLE_CODE_DATETIME,
-                        convertToBASE64(
+                        vscp_convertToBASE64(
                           getSentCivilTwilightSunsetTime().getISODateTime())
                           .c_str());
             } else if ("SENT-SUNRISE-TWILIGHT" == hlo.m_name) {
@@ -990,7 +989,7 @@ CAutomation::handleHLO(vscpEvent* pEvent)
                         "sent-sunrise-twilight",
                         "OK",
                         VSCP_REMOTE_VARIABLE_CODE_DATETIME,
-                        convertToBASE64(
+                        vscp_convertToBASE64(
                           getSentCivilTwilightSunriseTime().getISODateTime())
                           .c_str());
             } else if ("SENT-NOON" == hlo.m_name) {
@@ -1006,7 +1005,7 @@ CAutomation::handleHLO(vscpEvent* pEvent)
                         "enable-sunrise",
                         "OK",
                         VSCP_REMOTE_VARIABLE_CODE_BOOLEAN,
-                        convertToBASE64(m_bSunRiseEvent ? std::string("true")
+                        vscp_convertToBASE64(m_bSunRiseEvent ? std::string("true")
                                                         : std::string("false"))
                           .c_str());
             } else if ("ENABLE-SUNSET" == hlo.m_name) {
@@ -1015,7 +1014,7 @@ CAutomation::handleHLO(vscpEvent* pEvent)
                         "enable-sunset",
                         "OK",
                         VSCP_REMOTE_VARIABLE_CODE_BOOLEAN,
-                        convertToBASE64(m_bSunSetEvent ? std::string("true")
+                        vscp_convertToBASE64(m_bSunSetEvent ? std::string("true")
                                                        : std::string("false"))
                           .c_str());
             } else if ("ENABLE-SUNRISE-TWILIGHT" == hlo.m_name) {
@@ -1024,7 +1023,7 @@ CAutomation::handleHLO(vscpEvent* pEvent)
                         "enable-sunrise-twilight",
                         "OK",
                         VSCP_REMOTE_VARIABLE_CODE_BOOLEAN,
-                        convertToBASE64(m_bSunRiseTwilightEvent
+                        vscp_convertToBASE64(m_bSunRiseTwilightEvent
                                           ? std::string("true")
                                           : std::string("false"))
                           .c_str());
@@ -1034,7 +1033,7 @@ CAutomation::handleHLO(vscpEvent* pEvent)
                         "enable-sunset-twilight",
                         "OK",
                         VSCP_REMOTE_VARIABLE_CODE_BOOLEAN,
-                        convertToBASE64(m_bSunSetTwilightEvent
+                        vscp_convertToBASE64(m_bSunSetTwilightEvent
                                           ? std::string("true")
                                           : std::string("false"))
                           .c_str());
@@ -1044,7 +1043,7 @@ CAutomation::handleHLO(vscpEvent* pEvent)
                         "enable-noon",
                         "OK",
                         VSCP_REMOTE_VARIABLE_CODE_BOOLEAN,
-                        convertToBASE64(m_bNoonEvent ? std::string("true")
+                        vscp_convertToBASE64(m_bNoonEvent ? std::string("true")
                                                      : std::string("false"))
                           .c_str());
             } else if ("LONGITUDE" == hlo.m_name) {
@@ -1053,56 +1052,56 @@ CAutomation::handleHLO(vscpEvent* pEvent)
                         "longitude",
                         "OK",
                         VSCP_REMOTE_VARIABLE_CODE_DOUBLE,
-                        convertToBASE64(getLongitudeStr()).c_str());
+                        vscp_convertToBASE64(getLongitudeStr()).c_str());
             } else if ("LATITUDE" == hlo.m_name) {
                 sprintf(buf,
                         HLO_READ_VAR_REPLY_TEMPLATE,
                         "latitude",
                         "OK",
                         VSCP_REMOTE_VARIABLE_CODE_DOUBLE,
-                        convertToBASE64(getLatitudeStr()).c_str());
+                        vscp_convertToBASE64(getLatitudeStr()).c_str());
             } else if ("ZONE" == hlo.m_name) {
                 sprintf(buf,
                         HLO_READ_VAR_REPLY_TEMPLATE,
                         "zone",
                         "OK",
                         VSCP_REMOTE_VARIABLE_CODE_INTEGER,
-                        convertToBASE64(getZoneStr()).c_str());
+                        vscp_convertToBASE64(getZoneStr()).c_str());
             } else if ("SUBZONE" == hlo.m_name) {
                 sprintf(buf,
                         HLO_READ_VAR_REPLY_TEMPLATE,
                         "subzone",
                         "OK",
                         VSCP_REMOTE_VARIABLE_CODE_INTEGER,
-                        convertToBASE64(getSubZoneStr()).c_str());
+                        vscp_convertToBASE64(getSubZoneStr()).c_str());
             } else if ("DAYLENGTH" == hlo.m_name) {
                 sprintf(buf,
                         HLO_READ_VAR_REPLY_TEMPLATE,
                         "daylength",
                         "OK",
                         VSCP_REMOTE_VARIABLE_CODE_DOUBLE,
-                        convertToBASE64(getDayLengthStr()).c_str());
+                        vscp_convertToBASE64(getDayLengthStr()).c_str());
             } else if ("DECLINATION" == hlo.m_name) {
                 sprintf(buf,
                         HLO_READ_VAR_REPLY_TEMPLATE,
                         "declination",
                         "OK",
                         VSCP_REMOTE_VARIABLE_CODE_DOUBLE,
-                        convertToBASE64(getDeclinationStr()).c_str());
+                        vscp_convertToBASE64(getDeclinationStr()).c_str());
             } else if ("SUN-MAX-ALTITUDE" == hlo.m_name) {
                 sprintf(buf,
                         HLO_READ_VAR_REPLY_TEMPLATE,
                         "sun-max-altitude",
                         "OK",
                         VSCP_REMOTE_VARIABLE_CODE_DOUBLE,
-                        convertToBASE64(getSunMaxAltitudeStr()).c_str());
+                        vscp_convertToBASE64(getSunMaxAltitudeStr()).c_str());
             } else if ("LAST-CALCULATION" == hlo.m_name) {
                 sprintf(buf,
                         HLO_READ_VAR_REPLY_TEMPLATE,
                         "last-calculation",
                         "OK",
                         VSCP_REMOTE_VARIABLE_CODE_DATETIME,
-                        convertToBASE64(getLastCalculation().getISODateTime())
+                        vscp_convertToBASE64(getLastCalculation().getISODateTime())
                           .c_str());
             } else {
                 sprintf(
@@ -1110,7 +1109,7 @@ CAutomation::handleHLO(vscpEvent* pEvent)
                   HLO_READ_VAR_ERR_REPLY_TEMPLATE,
                   hlo.m_name.c_str(),
                   ERR_VARIABLE_UNKNOWN,
-                  convertToBASE64(std::string("Unknown variable")).c_str());
+                  vscp_convertToBASE64(std::string("Unknown variable")).c_str());
             }
             break;
 
@@ -1133,45 +1132,23 @@ CAutomation::handleHLO(vscpEvent* pEvent)
                 // Read Only variable
                 sprintf(buf,
                         HLO_READ_VAR_ERR_REPLY_TEMPLATE,
-                        "sunrise",
+                        "sunrise-twilight",
                         VSCP_REMOTE_VARIABLE_CODE_BOOLEAN,
                         "Variable is read only.");
-                sprintf(buf,
-                        HLO_READ_VAR_REPLY_TEMPLATE,
-                        "sunrise-twilight",
-                        "OK",
-                        VSCP_REMOTE_VARIABLE_CODE_DATETIME,
-                        convertToBASE64(
-                          getCivilTwilightSunriseTime().getISODateTime())
-                          .c_str());
             } else if ("SUNSET-TWILIGHT" == hlo.m_name) {
                 // Read Only variable
                 sprintf(buf,
                         HLO_READ_VAR_ERR_REPLY_TEMPLATE,
-                        "sunrise",
+                        "sunset-twilight",
                         VSCP_REMOTE_VARIABLE_CODE_BOOLEAN,
                         "Variable is read only.");
-                sprintf(
-                  buf,
-                  HLO_READ_VAR_REPLY_TEMPLATE,
-                  "sunset-twilight",
-                  "OK",
-                  VSCP_REMOTE_VARIABLE_CODE_DATETIME,
-                  convertToBASE64(getCivilTwilightSunsetTime().getISODateTime())
-                    .c_str());
             } else if ("NOON" == hlo.m_name) {
                 // Read Only variable
                 sprintf(buf,
                         HLO_READ_VAR_ERR_REPLY_TEMPLATE,
-                        "sunrise",
+                        "noon",
                         VSCP_REMOTE_VARIABLE_CODE_BOOLEAN,
                         "Variable is read only.");
-                sprintf(buf,
-                        HLO_READ_VAR_REPLY_TEMPLATE,
-                        "noon",
-                        "OK",
-                        VSCP_REMOTE_VARIABLE_CODE_DATETIME,
-                        convertToBASE64(m_noonTime.getISODateTime()).c_str());
             } else if ("SENT-SUNRISE" == hlo.m_name) {
                 // Read Only variable
                 sprintf(buf,
@@ -1227,7 +1204,7 @@ CAutomation::handleHLO(vscpEvent* pEvent)
                                 "enable-sunrise",
                                 "OK",
                                 VSCP_REMOTE_VARIABLE_CODE_BOOLEAN,
-                                convertToBASE64(isSendSunriseEvent()
+                                vscp_convertToBASE64(isSendSunriseEvent()
                                                   ? std::string("true")
                                                   : std::string("false"))
                                   .c_str());
@@ -1238,7 +1215,7 @@ CAutomation::handleHLO(vscpEvent* pEvent)
                                 "enable-sunrise",
                                 "OK",
                                 VSCP_REMOTE_VARIABLE_CODE_BOOLEAN,
-                                convertToBASE64(isSendSunriseEvent()
+                                vscp_convertToBASE64(isSendSunriseEvent()
                                                   ? std::string("true")
                                                   : std::string("false"))
                                   .c_str());
@@ -1262,7 +1239,7 @@ CAutomation::handleHLO(vscpEvent* pEvent)
                                 "enable-sunset",
                                 "OK",
                                 VSCP_REMOTE_VARIABLE_CODE_BOOLEAN,
-                                convertToBASE64(isSendSunsetEvent()
+                                vscp_convertToBASE64(isSendSunsetEvent()
                                                   ? std::string("true")
                                                   : std::string("false"))
                                   .c_str());
@@ -1273,7 +1250,7 @@ CAutomation::handleHLO(vscpEvent* pEvent)
                                 "enable-sunset",
                                 "OK",
                                 VSCP_REMOTE_VARIABLE_CODE_BOOLEAN,
-                                convertToBASE64(isSendSunsetEvent()
+                                vscp_convertToBASE64(isSendSunsetEvent()
                                                   ? std::string("true")
                                                   : std::string("false"))
                                   .c_str());
@@ -1297,7 +1274,7 @@ CAutomation::handleHLO(vscpEvent* pEvent)
                                 "enable-sunrise-twilight",
                                 "OK",
                                 VSCP_REMOTE_VARIABLE_CODE_BOOLEAN,
-                                convertToBASE64(isSendSunriseTwilightEvent()
+                                vscp_convertToBASE64(isSendSunriseTwilightEvent()
                                                   ? std::string("true")
                                                   : std::string("false"))
                                   .c_str());
@@ -1308,7 +1285,7 @@ CAutomation::handleHLO(vscpEvent* pEvent)
                                 "enable-sunrise-twilight",
                                 "OK",
                                 VSCP_REMOTE_VARIABLE_CODE_BOOLEAN,
-                                convertToBASE64(isSendSunriseTwilightEvent()
+                                vscp_convertToBASE64(isSendSunriseTwilightEvent()
                                                   ? std::string("true")
                                                   : std::string("false"))
                                   .c_str());
@@ -1332,7 +1309,7 @@ CAutomation::handleHLO(vscpEvent* pEvent)
                                 "enable-sunset-twilight",
                                 "OK",
                                 VSCP_REMOTE_VARIABLE_CODE_BOOLEAN,
-                                convertToBASE64(isSendSunsetTwilightEvent()
+                                vscp_convertToBASE64(isSendSunsetTwilightEvent()
                                                   ? std::string("true")
                                                   : std::string("false"))
                                   .c_str());
@@ -1343,7 +1320,7 @@ CAutomation::handleHLO(vscpEvent* pEvent)
                                 "enable-sunset-twilight",
                                 "OK",
                                 VSCP_REMOTE_VARIABLE_CODE_BOOLEAN,
-                                convertToBASE64(isSendSunsetTwilightEvent()
+                                vscp_convertToBASE64(isSendSunsetTwilightEvent()
                                                   ? std::string("true")
                                                   : std::string("false"))
                                   .c_str());
@@ -1367,7 +1344,7 @@ CAutomation::handleHLO(vscpEvent* pEvent)
                                 "enable-noon",
                                 "OK",
                                 VSCP_REMOTE_VARIABLE_CODE_BOOLEAN,
-                                convertToBASE64(isSendCalculatedNoonEvent()
+                                vscp_convertToBASE64(isSendCalculatedNoonEvent()
                                                   ? std::string("true")
                                                   : std::string("false"))
                                   .c_str());
@@ -1378,7 +1355,7 @@ CAutomation::handleHLO(vscpEvent* pEvent)
                                 "enable-sunrise",
                                 "OK",
                                 VSCP_REMOTE_VARIABLE_CODE_BOOLEAN,
-                                convertToBASE64(isSendCalculatedNoonEvent()
+                                vscp_convertToBASE64(isSendCalculatedNoonEvent()
                                                   ? std::string("true")
                                                   : std::string("false"))
                                   .c_str());
@@ -1398,56 +1375,56 @@ CAutomation::handleHLO(vscpEvent* pEvent)
                         "longitude",
                         "OK",
                         5,
-                        convertToBASE64(getLongitudeStr()).c_str());
+                        vscp_convertToBASE64(getLongitudeStr()).c_str());
             } else if ("LATITUDE" == hlo.m_name) {
                 sprintf(buf,
                         HLO_READ_VAR_REPLY_TEMPLATE,
                         "latitude",
                         "OK",
                         5,
-                        convertToBASE64(getLatitudeStr()).c_str());
+                        vscp_convertToBASE64(getLatitudeStr()).c_str());
             } else if ("ZONE" == hlo.m_name) {
                 sprintf(buf,
                         HLO_READ_VAR_REPLY_TEMPLATE,
                         "zone",
                         "OK",
                         3,
-                        convertToBASE64(getZoneStr()).c_str());
+                        vscp_convertToBASE64(getZoneStr()).c_str());
             } else if ("SUBZONE" == hlo.m_name) {
                 sprintf(buf,
                         HLO_READ_VAR_REPLY_TEMPLATE,
                         "subzone",
                         "OK",
                         3,
-                        convertToBASE64(getSubZoneStr()).c_str());
+                        vscp_convertToBASE64(getSubZoneStr()).c_str());
             } else if ("DAYLENGTH" == hlo.m_name) {
                 sprintf(buf,
                         HLO_READ_VAR_REPLY_TEMPLATE,
                         "daylength",
                         "OK",
                         5,
-                        convertToBASE64(getDayLengthStr()).c_str());
+                        vscp_convertToBASE64(getDayLengthStr()).c_str());
             } else if ("DECLINATION" == hlo.m_name) {
                 sprintf(buf,
                         HLO_READ_VAR_REPLY_TEMPLATE,
                         "declination",
                         "OK",
                         5,
-                        convertToBASE64(getDeclinationStr()).c_str());
+                        vscp_convertToBASE64(getDeclinationStr()).c_str());
             } else if ("SUN-MAX-ALTITUDE" == hlo.m_name) {
                 sprintf(buf,
                         HLO_READ_VAR_REPLY_TEMPLATE,
                         "sun-max-altitude",
                         "OK",
                         5,
-                        convertToBASE64(getSunMaxAltitudeStr()).c_str());
+                        vscp_convertToBASE64(getSunMaxAltitudeStr()).c_str());
             } else if ("LAST-CALCULATION" == hlo.m_name) {
                 sprintf(buf,
                         HLO_READ_VAR_REPLY_TEMPLATE,
                         "last-calculation",
                         "OK",
                         13,
-                        convertToBASE64(getLastCalculation().getISODateTime())
+                        vscp_convertToBASE64(getLastCalculation().getISODateTime())
                           .c_str());
             } else {
                 sprintf(
@@ -1455,7 +1432,7 @@ CAutomation::handleHLO(vscpEvent* pEvent)
                   HLO_READ_VAR_ERR_REPLY_TEMPLATE,
                   hlo.m_name.c_str(),
                   1,
-                  convertToBASE64(std::string("Unknown variable")).c_str());
+                  vscp_convertToBASE64(std::string("Unknown variable")).c_str());
             }
             break;
 
