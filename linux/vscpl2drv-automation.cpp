@@ -271,8 +271,8 @@ VSCPRead(long handle, vscpEvent *pEvent, unsigned long timeout)
     pdrvObj->m_receiveList.pop_front();
     pthread_mutex_unlock(&pdrvObj->m_mutexReceiveQueue);
 
-    vscp_copyVSCPEvent(pEvent, pLocalEvent);
-    vscp_deleteVSCPevent(pLocalEvent);
+    vscp_copyEvent(pEvent, pLocalEvent);
+    vscp_deleteEvent(pLocalEvent);
 
     return CANAL_ERROR_SUCCESS;
 }

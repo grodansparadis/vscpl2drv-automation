@@ -19,7 +19,7 @@ A driver that send automation events from location data that is automatically ca
 ## Install the driver on Linux
 You can install the driver using the debian package with
 
-> sudo dpkg -i vscpl2drv-automation1
+> sudo dpkg -i vscpl2drv-automation
 
 the driver will be installed to /usr/lib
 

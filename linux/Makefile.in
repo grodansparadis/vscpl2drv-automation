@@ -141,7 +141,6 @@ uninstall:
 	rm -f  $(DESTDIR)$(libdir)/vscpl2drv-automation.so.$(MAJOR_VERSION)
 	rm -f  $(DESTDIR)$(libdir)/vscpl2drv-automation.so.$(MAJOR_VERSION).$(MINOR_VERSION)
 	rm -f  $(DESTDIR)$(libdir)/vscpl2drv-automation.a
-	rm -rf $(VSCP_PROJ_BASE_DIR)/drivers/level2/vscpl2drv-automation.so
 
 install-strip: install
 
