@@ -887,8 +887,8 @@ CAutomation::handleHLO(vscpEvent* pEvent)
     ex.head = 0;
     ex.timestamp = vscp_makeTimeStamp();
     vscp_setEventExToNow(&ex); // Set time to current time
-    ex.vscp_class = VSCP_CLASS2_PROTOCOL;
-    ex.vscp_type = VSCP2_TYPE_PROTOCOL_HIGH_LEVEL_OBJECT;
+    ex.vscp_class = VSCP_CLASS2_HLO;
+    ex.vscp_type = VSCP2_TYPE_HLO_RESPONSE;
     m_guid.writeGUID(ex.GUID);
 
     switch (hlo.m_op) {
@@ -1747,19 +1747,19 @@ workerThread(void* pData)
             pObj->m_sendList.pop_front();
             pthread_mutex_unlock(&pObj->m_mutexSendQueue);
 
-            if (NULL == pEvent)
+            if (NULL == pEvent) {
                 continue;
+            }
 
             // Only HLO object event is of interst to us
-            if ((VSCP_CLASS2_PROTOCOL == pEvent->vscp_class) &&
-                (VSCP2_TYPE_PROTOCOL_HIGH_LEVEL_OBJECT == pEvent->vscp_type)) {
+            if ((VSCP_CLASS2_HLO == pEvent->vscp_class) &&
+                (VSCP2_TYPE_HLO_COMMAND == pEvent->vscp_type) && 
+                vscp_isSameGUID(pObj->m_guid.getGUID(), pEvent->GUID) ) {
                 pObj->handleHLO(pEvent);
             }
 
-            // Remove the event
-            pthread_mutex_lock(&pObj->m_mutexSendQueue);
             vscp_deleteEvent(pEvent);
-            pthread_mutex_unlock(&pObj->m_mutexSendQueue);
+            pEvent = NULL;
 
         } // event to send
 
