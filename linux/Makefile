@@ -11,7 +11,8 @@ PACKAGE_VERSION=1.1.0
 
 # STATIC = yes if a static build is requested.
 STATIC=no
-VSCP_PROJ_BASE_DIR=/srv/vscp/
+VSCP_PROJ_BASE_DIR=/var/lib/vscp/
+DESTDIR=/var/lib/vscp/
 
 prefix = /usr/local
 exec_prefix = ${prefix}
@@ -33,11 +34,11 @@ WARNINGS = -Wall
 
 VERSION_DEFS = -DMAJOR_VERSION=$(MAJOR_VERSION) -DMINOR_VERSION=$(MINOR_VERSION) \
 	-DRELEASE_VERSION=$(RELEASE_VERSION) -DBUILD_VERSION=$(BUILD_VERSION)
-CFLAGS = -std=c99  -DOPENSSL_API_1_1 ${WARNINGS} -fPIC -DCBC -I.. -I../common \
+CFLAGS = -std=c99  -g -O0 -DOPENSSL_API_1_1 ${WARNINGS} -fPIC -DCBC -I.. -I../common \
 	-I../vscp/src/common \
 	-I../vscp/src/vscp/common \
 	$(VERSION_DEFS)
-CXXFLAGS = -std=c++11 ${WARNINGS} -D__LINUX__ -fPIC -D_REENTRANT 
+CXXFLAGS = -std=c++11 ${WARNINGS} -D__LINUX__ -fPIC -D_REENTRANT  -g -O0
 CPPFLAGS = -D__LINUX__ -fPIC  ${WARNINGS} -fno-var-tracking-assignments \
     -I.. -I@include@ -I../common \
 	-I../vscp/src/common \
@@ -129,18 +130,18 @@ fastpbkdf2.o: ../vscp/src/common/fastpbkdf2.c ../vscp/src/common/fastpbkdf2.h
 vscpmd5.o: ../vscp/src/common/vscpmd5.c ../vscp/src/common/vscpmd5.h
 	$(CC) $(CFLAGS) -c ../vscp/src/common/vscpmd5.c -o $@
 
-install: all
-	$(INSTALL_DIR) $(DESTDIR)$(libdir)
+install: all	
+	$(INSTALL_DIR) $(DESTDIR)/drivers/level2/
 	$(STRIP) $(LIB_PLUS_VER)
-	$(INSTALL_PROGRAM) $(LIB_PLUS_VER) $(DESTDIR)$(libdir)
-	ln -fs $(libdir)/$(LIB_PLUS_VER) $(DESTDIR)$(libdir)/vscpl2drv-automation.so
-	ln -fs $(libdir)/$(LIB_PLUS_VER) $(DESTDIR)$(libdir)/vscpl2drv-automation.so.$(MAJOR_VERSION)
-	ln -fs $(libdir)/$(LIB_PLUS_VER) $(DESTDIR)$(libdir)/vscpl2drv-automation.so.$(MAJOR_VERSION).$(MINOR_VERSION
-	$(INSTALL_PROGRAM) vscpl2drv-automation.a $(DESTDIR)$(libdir)
+	$(INSTALL_PROGRAM) $(LIB_PLUS_VER) $(DESTDIR)/drivers/level2/
+	ln -fs $(DESTDIR)/drivers/level2//$(LIB_PLUS_VER) $(DESTDIR)/drivers/level2//vscpl2drv-automation.so
+	ln -fs $(DESTDIR)/drivers/level2//$(LIB_PLUS_VER) $(DESTDIR)/drivers/level2//vscpl2drv-automation.so.$(MAJOR_VERSION)
+	ln -fs $(DESTDIR)/drivers/level2//$(LIB_PLUS_VER) $(DESTDIR)/drivers/level2//vscpl2drv-automation.so.$(MAJOR_VERSION).$(MINOR_VERSION)
+	$(INSTALL_PROGRAM) libvscpl2drv-automation.a $(DESTDIR)/drivers/level2/
 
 uninstall:
-	rm -f  $(DESTDIR)$(libdir)/vscpl2drv-automation.so
 	rm -f  $(DESTDIR)$(libdir)/$(LIB_PLUS_VER)
+	rm -f  $(DESTDIR)$(libdir)/vscpl2drv-automation.so
 	rm -f  $(DESTDIR)$(libdir)/vscpl2drv-automation.so.$(MAJOR_VERSION)
 	rm -f  $(DESTDIR)$(libdir)/vscpl2drv-automation.so.$(MAJOR_VERSION).$(MINOR_VERSION)
 	rm -f  $(DESTDIR)$(libdir)/vscpl2drv-automation.a

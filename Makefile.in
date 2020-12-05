@@ -11,6 +11,9 @@ PACKAGE_VERSION=@PACKAGE_VERSION@
 
 STATIC=@STATIC@
 
+VSCP_PROJ_BASE_DIR=@DESTDIR@
+DESTDIR=@DESTDIR@
+
 INSTALL = @INSTALL@
 INSTALL_PROGRAM = ${INSTALL}
 INSTALL_DATA = ${INSTALL} -m 644
@@ -26,11 +29,14 @@ all:
 
 
 install: 
+	$(INSTALL_DIR) $(DESTDIR)/vscpd 
+	$(INSTALL_PROGRAM) install-files/vscpl2drv-automation.conf $(DESTDIR)/vscpd
 # Install sub components
 	@for d in $(PROJ_SUBDIRS); do (echo "====================================================" &&\
 	echo "Building in dir " $$d && echo "====================================================" && cd $$d && $(MAKE) install); done
 
 uninstall: 
+	rm $(DESTDIR)/vscpd/vscpl2drv-automation.conf
 # Uninstall sub components
 	@for d in $(PROJ_SUBDIRS); do (echo "====================================================" &&\
 	echo "Building in dir " $$d && echo "====================================================" && cd $$d && $(MAKE) uninstall); done

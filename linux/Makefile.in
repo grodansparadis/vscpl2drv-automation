@@ -12,6 +12,7 @@ PACKAGE_VERSION=@PACKAGE_VERSION@
 # STATIC = yes if a static build is requested.
 STATIC=@STATIC@
 VSCP_PROJ_BASE_DIR=@DESTDIR@
+DESTDIR=@DESTDIR@
 
 prefix = @prefix@
 exec_prefix = @exec_prefix@
@@ -129,18 +130,18 @@ fastpbkdf2.o: ../vscp/src/common/fastpbkdf2.c ../vscp/src/common/fastpbkdf2.h
 vscpmd5.o: ../vscp/src/common/vscpmd5.c ../vscp/src/common/vscpmd5.h
 	$(CC) $(CFLAGS) -c ../vscp/src/common/vscpmd5.c -o $@
 
-install: all
-	$(INSTALL_DIR) $(DESTDIR)$(libdir)
+install: all	
+	$(INSTALL_DIR) $(DESTDIR)/drivers/level2/
 	$(STRIP) $(LIB_PLUS_VER)
-	$(INSTALL_PROGRAM) $(LIB_PLUS_VER) $(DESTDIR)$(libdir)
-	ln -fs $(libdir)/$(LIB_PLUS_VER) $(DESTDIR)$(libdir)/vscpl2drv-automation.so
-	ln -fs $(libdir)/$(LIB_PLUS_VER) $(DESTDIR)$(libdir)/vscpl2drv-automation.so.$(MAJOR_VERSION)
-	ln -fs $(libdir)/$(LIB_PLUS_VER) $(DESTDIR)$(libdir)/vscpl2drv-automation.so.$(MAJOR_VERSION).$(MINOR_VERSION
-	$(INSTALL_PROGRAM) vscpl2drv-automation.a $(DESTDIR)$(libdir)
+	$(INSTALL_PROGRAM) $(LIB_PLUS_VER) $(DESTDIR)/drivers/level2/
+	ln -fs $(DESTDIR)/drivers/level2//$(LIB_PLUS_VER) $(DESTDIR)/drivers/level2//vscpl2drv-automation.so
+	ln -fs $(DESTDIR)/drivers/level2//$(LIB_PLUS_VER) $(DESTDIR)/drivers/level2//vscpl2drv-automation.so.$(MAJOR_VERSION)
+	ln -fs $(DESTDIR)/drivers/level2//$(LIB_PLUS_VER) $(DESTDIR)/drivers/level2//vscpl2drv-automation.so.$(MAJOR_VERSION).$(MINOR_VERSION)
+	$(INSTALL_PROGRAM) libvscpl2drv-automation.a $(DESTDIR)/drivers/level2/
 
 uninstall:
-	rm -f  $(DESTDIR)$(libdir)/vscpl2drv-automation.so
 	rm -f  $(DESTDIR)$(libdir)/$(LIB_PLUS_VER)
+	rm -f  $(DESTDIR)$(libdir)/vscpl2drv-automation.so
 	rm -f  $(DESTDIR)$(libdir)/vscpl2drv-automation.so.$(MAJOR_VERSION)
 	rm -f  $(DESTDIR)$(libdir)/vscpl2drv-automation.so.$(MAJOR_VERSION).$(MINOR_VERSION)
 	rm -f  $(DESTDIR)$(libdir)/vscpl2drv-automation.a
