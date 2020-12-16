@@ -237,11 +237,7 @@ VSCPRead(long handle, vscpEvent *pEvent, unsigned long timeout)
     CAutomation *pdrvObj = getDriverObject(handle);
     if (NULL == pdrvObj) return CANAL_ERROR_MEMORY;
 
-    struct timespec ts;
-    ts.tv_sec  = 0;
-    ts.tv_nsec = timeout * 1000;
-
-    if (-1 == (rv = sem_timedwait(&pdrvObj->m_semReceiveQueue, &ts))) {
+    if (-1 == (rv = vscp_sem_wait(&pdrvObj->m_semReceiveQueue, timeout))) {
         if (ETIMEDOUT == errno) {
             return CANAL_ERROR_TIMEOUT;
         } else if (EINTR == errno) {

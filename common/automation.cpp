@@ -791,6 +791,7 @@ CAutomation::doLoadConfig(void)
 
     size_t file_size = 0;
     file_size = fread(buf, sizeof(char), XML_BUFF_SIZE, fp);
+    fclose(fp);
 
     if (XML_STATUS_OK != XML_ParseBuffer(xmlParser, file_size, file_size == 0)) {
         syslog(LOG_ERR, "[vscpl2drv-automation] Failed parse XML setup.");
@@ -1719,10 +1720,8 @@ workerThread(void* pData)
         pObj->doWork();
 
         // Check for incoming event
-        struct timespec ts;
-        ts.tv_sec = 1;
-        ts.tv_nsec = 0;
-        if (-1 == sem_timedwait(&pObj->m_semSendQueue, &ts)) {
+        int rv;
+        if (-1 == (rv = vscp_sem_wait(&pObj->m_semSendQueue, 1000))) {    
             if (EINTR == errno) {
                 syslog(LOG_INFO,
                        "[vscpl2drv-automation] Interrupted by a signal "
