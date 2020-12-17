@@ -1,0 +1,12 @@
+{
+    "debug-enable" : "true",
+    "write-enable" : "true",
+    "zone" : "1",
+    "subzone" : "2",
+    "longitude" : "15.1604167",
+    "latitude" : "61.7441833",
+    "enable-sunrise" : "true",
+    "enable-sunrise-twilight" : "true",
+    "enable-sunset" : "true",
+    "enable-sunset-twilight" : "true",
+}

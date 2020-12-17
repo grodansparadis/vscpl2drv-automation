@@ -48,8 +48,17 @@
 #include <vscpdatetime.h>
 #include <vscphelper.h>
 
+#include <json.hpp>  // Needs C++11  -std=c++11
+#include <mustache.hpp>
+
+// https://github.com/nlohmann/json
+using json = nlohmann::json;
+
+using namespace kainjow::mustache;
+
 // User defined HLO operations
 #define HLO_USER_CALC_ASTRO     (HLO_OP_USER_DEFINED + 0)
+#define VSCP2_TYPE_VSCPD_NEW_CALCULATION    12      // TODO(akhe)  Remove
 
 ///////////////////////////////////////////////////////////////////////////////
 // Class that holds one VSCP automation object
@@ -352,6 +361,10 @@ class CAutomation
     vscpdatetime &getSentCalculatedNoonEvent(void) { return m_noonTime_sent; };
 
   public:
+
+    // JSON configuration object
+    json m_j_config;
+
     /// Debug flag set in config
     bool m_bDebug;
 

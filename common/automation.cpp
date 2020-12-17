@@ -72,10 +72,24 @@
 #include <vscphelper.h>
 #include <vscpremotetcpif.h>
 
+#include <json.hpp>  // Needs C++11  -std=c++11
+#include <mustache.hpp>
+
 #include "automation.h"
 
+#include <iostream>
+#include <fstream>      
+#include <list>
+#include <map>
+#include <string>
+
+// https://github.com/nlohmann/json
+using json = nlohmann::json;
+
+using namespace kainjow::mustache;
+
 // Buffer for XML parser
-#define XML_BUFF_SIZE 30000
+//#define XML_BUFF_SIZE 30000
 
 // Forward declaration
 void*
@@ -206,131 +220,131 @@ CAutomation::~CAutomation(void)
 
 // ----------------------------------------------------------------------------
 
-int depth_setup_parser = 0;
+// int depth_setup_parser = 0;
 
-void
-startSetupParser(void* data, const char* name, const char** attr)
-{
-    CAutomation* pObj = (CAutomation*)data;
-    if (NULL == pObj)
-        return;
+// void
+// startSetupParser(void* data, const char* name, const char** attr)
+// {
+//     CAutomation* pObj = (CAutomation*)data;
+//     if (NULL == pObj)
+//         return;
 
-    if ((0 == strcmp(name, "config")) && (0 == depth_setup_parser)) {
+//     if ((0 == strcmp(name, "config")) && (0 == depth_setup_parser)) {
 
-        for (int i = 0; attr[i]; i += 2) {
+//         for (int i = 0; attr[i]; i += 2) {
 
-            std::string attribute = attr[i + 1];
-            vscp_trim(attribute);
+//             std::string attribute = attr[i + 1];
+//             vscp_trim(attribute);
 
-            if (0 == strcasecmp(attr[i], "zone")) {
-                if (!attribute.empty()) {
-                    pObj->m_zone = vscp_readStringValue(attribute);
-                }
-            } else if (0 == strcasecmp(attr[i], "subzone")) {
-                if (!attribute.empty()) {
-                    pObj->m_subzone = vscp_readStringValue(attribute);
-                }
-            } else if (0 == strcasecmp(attr[i], "longitude")) {
-                if (!attribute.empty()) {
-                    pObj->setLongitude(atof(attribute.c_str()));
-                }
-            } else if (0 == strcasecmp(attr[i], "latitude")) {
-                if (!attribute.empty()) {
-                    pObj->setLatitude(atof(attribute.c_str()));
-                }
-            } else if (0 == strcasecmp(attr[i], "enable-sunrise")) {
-                if (!attribute.empty()) {
-                    vscp_makeUpper(attribute);
-                    if (std::string::npos != attribute.find("TRUE")) {
-                        pObj->enableSunRiseEvent();
-                    } else {
-                        pObj->disableSunRiseEvent();
-                    }
-                }
-            } else if (0 == strcasecmp(attr[i], "enable-sunrise-twilight")) {
-                if (!attribute.empty()) {
-                    vscp_makeUpper(attribute);
-                    if (std::string::npos != attribute.find("TRUE")) {
-                        pObj->enableSunSetEvent();
-                    } else {
-                        pObj->disableSunSetEvent();
-                    }
-                }
-            } else if (0 == strcasecmp(attr[i], "enable-sunset")) {
-                if (!attribute.empty()) {
-                    vscp_makeUpper(attribute);
-                    if (std::string::npos != attribute.find("TRUE")) {
-                        pObj->enableSunRiseTwilightEvent();
-                    } else {
-                        pObj->disableSunRiseTwilightEvent();
-                    }
-                }
-            } else if (0 == strcasecmp(attr[i], "enable-sunset-twilight")) {
-                if (!attribute.empty()) {
-                    vscp_makeUpper(attribute);
-                    if (std::string::npos != attribute.find("TRUE")) {
-                        pObj->enableSunSetTwilightEvent();
-                    } else {
-                        pObj->disableSunSetTwilightEvent();
-                    }
-                }
-            } else if (0 == strcasecmp(attr[i], "enable-noon")) {
-                if (!attribute.empty()) {
-                    vscp_makeUpper(attribute);
-                    if (std::string::npos != attribute.find("TRUE")) {
-                        pObj->enableCalculatedNoonEvent();
-                    } else {
-                        pObj->disableCalculatedNoonEvent();
-                    }
-                }
-            } else if (0 == strcasecmp(attr[i], "debug")) {
-                if (!attribute.empty()) {
-                    vscp_makeUpper(attribute);
-                    if (std::string::npos != attribute.find("TRUE")) {
-                        pObj->m_bDebug = true;
-                    } else {
-                        pObj->m_bDebug = false;
-                    }
-                }
-            } else if (0 == strcasecmp(attr[i], "write")) {
-                if (!attribute.empty()) {
-                    vscp_makeUpper(attribute);
-                    if (std::string::npos != attribute.find("TRUE")) {
-                        pObj->enableWrite();
-                    } else {
-                        pObj->disableWrite();
-                    }
-                }
-            } else if (0 == strcasecmp(attr[i], "filter")) {
-                if (!attribute.empty()) {
-                    if (!vscp_readFilterFromString(&pObj->m_vscpfilter,
-                                                   attribute)) {
-                        syslog(LOG_ERR,
-                               "[vscpl2drv-automation] Unable to read event "
-                               "receive filter.");
-                    }
-                }
-            } else if (0 == strcasecmp(attr[i], "mask")) {
-                if (!attribute.empty()) {
-                    if (!vscp_readMaskFromString(&pObj->m_vscpfilter,
-                                                 attribute)) {
-                        syslog(LOG_ERR,
-                               "[vscpl2drv-automation] Unable to read event "
-                               "receive mask.");
-                    }
-                }
-            }
-        }
-    }
+//             if (0 == strcasecmp(attr[i], "zone")) {
+//                 if (!attribute.empty()) {
+//                     pObj->m_zone = vscp_readStringValue(attribute);
+//                 }
+//             } else if (0 == strcasecmp(attr[i], "subzone")) {
+//                 if (!attribute.empty()) {
+//                     pObj->m_subzone = vscp_readStringValue(attribute);
+//                 }
+//             } else if (0 == strcasecmp(attr[i], "longitude")) {
+//                 if (!attribute.empty()) {
+//                     pObj->setLongitude(atof(attribute.c_str()));
+//                 }
+//             } else if (0 == strcasecmp(attr[i], "latitude")) {
+//                 if (!attribute.empty()) {
+//                     pObj->setLatitude(atof(attribute.c_str()));
+//                 }
+//             } else if (0 == strcasecmp(attr[i], "enable-sunrise")) {
+//                 if (!attribute.empty()) {
+//                     vscp_makeUpper(attribute);
+//                     if (std::string::npos != attribute.find("TRUE")) {
+//                         pObj->enableSunRiseEvent();
+//                     } else {
+//                         pObj->disableSunRiseEvent();
+//                     }
+//                 }
+//             } else if (0 == strcasecmp(attr[i], "enable-sunrise-twilight")) {
+//                 if (!attribute.empty()) {
+//                     vscp_makeUpper(attribute);
+//                     if (std::string::npos != attribute.find("TRUE")) {
+//                         pObj->enableSunSetEvent();
+//                     } else {
+//                         pObj->disableSunSetEvent();
+//                     }
+//                 }
+//             } else if (0 == strcasecmp(attr[i], "enable-sunset")) {
+//                 if (!attribute.empty()) {
+//                     vscp_makeUpper(attribute);
+//                     if (std::string::npos != attribute.find("TRUE")) {
+//                         pObj->enableSunRiseTwilightEvent();
+//                     } else {
+//                         pObj->disableSunRiseTwilightEvent();
+//                     }
+//                 }
+//             } else if (0 == strcasecmp(attr[i], "enable-sunset-twilight")) {
+//                 if (!attribute.empty()) {
+//                     vscp_makeUpper(attribute);
+//                     if (std::string::npos != attribute.find("TRUE")) {
+//                         pObj->enableSunSetTwilightEvent();
+//                     } else {
+//                         pObj->disableSunSetTwilightEvent();
+//                     }
+//                 }
+//             } else if (0 == strcasecmp(attr[i], "enable-noon")) {
+//                 if (!attribute.empty()) {
+//                     vscp_makeUpper(attribute);
+//                     if (std::string::npos != attribute.find("TRUE")) {
+//                         pObj->enableCalculatedNoonEvent();
+//                     } else {
+//                         pObj->disableCalculatedNoonEvent();
+//                     }
+//                 }
+//             } else if (0 == strcasecmp(attr[i], "debug")) {
+//                 if (!attribute.empty()) {
+//                     vscp_makeUpper(attribute);
+//                     if (std::string::npos != attribute.find("TRUE")) {
+//                         pObj->m_bDebug = true;
+//                     } else {
+//                         pObj->m_bDebug = false;
+//                     }
+//                 }
+//             } else if (0 == strcasecmp(attr[i], "write")) {
+//                 if (!attribute.empty()) {
+//                     vscp_makeUpper(attribute);
+//                     if (std::string::npos != attribute.find("TRUE")) {
+//                         pObj->enableWrite();
+//                     } else {
+//                         pObj->disableWrite();
+//                     }
+//                 }
+//             } else if (0 == strcasecmp(attr[i], "filter")) {
+//                 if (!attribute.empty()) {
+//                     if (!vscp_readFilterFromString(&pObj->m_vscpfilter,
+//                                                    attribute)) {
+//                         syslog(LOG_ERR,
+//                                "[vscpl2drv-automation] Unable to read event "
+//                                "receive filter.");
+//                     }
+//                 }
+//             } else if (0 == strcasecmp(attr[i], "mask")) {
+//                 if (!attribute.empty()) {
+//                     if (!vscp_readMaskFromString(&pObj->m_vscpfilter,
+//                                                  attribute)) {
+//                         syslog(LOG_ERR,
+//                                "[vscpl2drv-automation] Unable to read event "
+//                                "receive mask.");
+//                     }
+//                 }
+//             }
+//         }
+//     }
 
-    depth_setup_parser++;
-}
+//     depth_setup_parser++;
+// }
 
-void
-endSetupParser(void* data, const char* name)
-{
-    depth_setup_parser--;
-}
+// void
+// endSetupParser(void* data, const char* name)
+// {
+//     depth_setup_parser--;
+// }
 
 // ----------------------------------------------------------------------------
 
@@ -696,66 +710,66 @@ int depth_hlo_parser = 0;
 void
 startHLOParser(void* data, const char* name, const char** attr)
 {
-    CHLO* pObj = (CHLO*)data;
-    if (NULL == pObj)
-        return;
+    // CHLO* pObj = (CHLO*)data;
+    // if (NULL == pObj)
+    //     return;
 
-    if ((0 == strcmp(name, "vscp-cmd")) && (0 == depth_setup_parser)) {
+    // if ((0 == strcmp(name, "vscp-cmd")) && (0 == depth_setup_parser)) {
 
-        for (int i = 0; attr[i]; i += 2) {
+    //     for (int i = 0; attr[i]; i += 2) {
 
-            std::string attribute = attr[i + 1];
-            vscp_trim(attribute);
+    //         std::string attribute = attr[i + 1];
+    //         vscp_trim(attribute);
 
-            if (0 == strcasecmp(attr[i], "op")) {
-                if (!attribute.empty()) {
-                    pObj->m_op = vscp_readStringValue(attribute);
-                    vscp_makeUpper(attribute);
-                    if (attribute == "VSCP-NOOP") {
-                        pObj->m_op = HLO_OP_NOOP;
-                    } else if (attribute == "VSCP-READVAR") {
-                        pObj->m_op = HLO_OP_READ_VAR;
-                    } else if (attribute == "VSCP-WRITEVAR") {
-                        pObj->m_op = HLO_OP_WRITE_VAR;
-                    } else if (attribute == "VSCP-LOAD") {
-                        pObj->m_op = HLO_OP_LOAD;
-                    } else if (attribute == "VSCP-SAVE") {
-                        pObj->m_op = HLO_OP_SAVE;
-                    } else if (attribute == "CALCULATE") {
-                        pObj->m_op = HLO_OP_SAVE;
-                    } else {
-                        pObj->m_op = HLO_OP_UNKNOWN;
-                    }
-                }
-            } else if (0 == strcasecmp(attr[i], "name")) {
-                if (!attribute.empty()) {
-                    vscp_makeUpper(attribute);
-                    pObj->m_name = attribute;
-                }
-            } else if (0 == strcasecmp(attr[i], "type")) {
-                if (!attribute.empty()) {
-                    pObj->m_varType = vscp_readStringValue(attribute);
-                }
-            } else if (0 == strcasecmp(attr[i], "value")) {
-                if (!attribute.empty()) {
-                    if (vscp_base64_std_decode(attribute)) {
-                        pObj->m_value = attribute;
-                    }
-                }
-            } else if (0 == strcasecmp(attr[i], "full")) {
-                if (!attribute.empty()) {
-                    vscp_makeUpper(attribute);
-                    if ("TRUE" == attribute) {
-                        pObj->m_bFull = true;
-                    } else {
-                        pObj->m_bFull = false;
-                    }
-                }
-            }
-        }
-    }
+    //         if (0 == strcasecmp(attr[i], "op")) {
+    //             if (!attribute.empty()) {
+    //                 pObj->m_op = vscp_readStringValue(attribute);
+    //                 vscp_makeUpper(attribute);
+    //                 if (attribute == "VSCP-NOOP") {
+    //                     pObj->m_op = HLO_OP_NOOP;
+    //                 } else if (attribute == "VSCP-READVAR") {
+    //                     pObj->m_op = HLO_OP_READ_VAR;
+    //                 } else if (attribute == "VSCP-WRITEVAR") {
+    //                     pObj->m_op = HLO_OP_WRITE_VAR;
+    //                 } else if (attribute == "VSCP-LOAD") {
+    //                     pObj->m_op = HLO_OP_LOAD;
+    //                 } else if (attribute == "VSCP-SAVE") {
+    //                     pObj->m_op = HLO_OP_SAVE;
+    //                 } else if (attribute == "CALCULATE") {
+    //                     pObj->m_op = HLO_OP_SAVE;
+    //                 } else {
+    //                     pObj->m_op = HLO_OP_UNKNOWN;
+    //                 }
+    //             }
+    //         } else if (0 == strcasecmp(attr[i], "name")) {
+    //             if (!attribute.empty()) {
+    //                 vscp_makeUpper(attribute);
+    //                 pObj->m_name = attribute;
+    //             }
+    //         } else if (0 == strcasecmp(attr[i], "type")) {
+    //             if (!attribute.empty()) {
+    //                 pObj->m_varType = vscp_readStringValue(attribute);
+    //             }
+    //         } else if (0 == strcasecmp(attr[i], "value")) {
+    //             if (!attribute.empty()) {
+    //                 if (vscp_base64_std_decode(attribute)) {
+    //                     pObj->m_value = attribute;
+    //                 }
+    //             }
+    //         } else if (0 == strcasecmp(attr[i], "full")) {
+    //             if (!attribute.empty()) {
+    //                 vscp_makeUpper(attribute);
+    //                 if ("TRUE" == attribute) {
+    //                     pObj->m_bFull = true;
+    //                 } else {
+    //                     pObj->m_bFull = false;
+    //                 }
+    //             }
+    //         }
+    //     }
+    // }
 
-    depth_hlo_parser++;
+    // depth_hlo_parser++;
 }
 
 void
@@ -773,7 +787,7 @@ endHLOParser(void* data, const char* name)
 bool
 CAutomation::doLoadConfig(void)
 {
-    FILE* fp;
+    /*FILE* fp;
     
     fp = fopen(m_path.c_str(), "r");
     if (NULL == fp) {
@@ -799,7 +813,196 @@ CAutomation::doLoadConfig(void)
         return false;
     }
 
-    XML_ParserFree(xmlParser);
+    XML_ParserFree(xmlParser);*/
+
+    try {
+        std::ifstream in(m_path, std::ifstream::in);
+        in >> m_j_config;
+    }
+    catch (json::parse_error) {
+        syslog(LOG_ERR, "[vscpl2drv-automation] Failed to parse JSON configuration.");
+        return false;
+    }
+
+    try {
+        if (m_j_config.contains("debug-enable") && m_j_config["debug-enable"].is_boolean()) { 
+            m_bDebug = m_j_config["debug-enable"].get<bool>();
+        } else {
+            syslog(LOG_ERR, "ReadConfig: Failed to read 'enable-debug'. Default will be used.");
+            return false;
+        }
+
+        if (m_bDebug) {
+            syslog(LOG_DEBUG, "ReadConfig: 'debug-enable' set to %s", m_bDebug ? "true" : "false");
+        }
+    }
+    catch (...) {
+        syslog(LOG_ERR, "ReadConfig: Failed to read 'debug-enable'. Default will be used.");
+        return false;
+    }
+
+    try {
+        if (m_j_config.contains("write-enable") && m_j_config["write-enable"].is_boolean()) { 
+            m_bDebug = m_j_config["write-enable"].get<bool>();
+        } else {
+            syslog(LOG_ERR, "ReadConfig: Failed to read 'write-debug'. Default will be used.");
+            return false;
+        }
+
+        if (m_bDebug) {
+            syslog(LOG_DEBUG, "ReadConfig: 'write-enable' set to %s", m_bWrite ? "true" : "false");
+        }
+    }
+    catch (...) {
+        syslog(LOG_ERR, "ReadConfig: Failed to read 'write-enable'. Default will be used.");
+        return false;
+    }
+
+    try {
+        if (m_j_config.contains("zone") && m_j_config["zone"].is_number()) { 
+            m_bDebug = m_j_config["zone"].get<bool>();
+        } else {
+            syslog(LOG_ERR, "ReadConfig: Failed to read 'zone'. Default will be used.");
+            return false;
+        }
+
+        if (m_bDebug) {
+            syslog(LOG_DEBUG, "ReadConfig: 'zone' set to %d", m_zone);
+        }
+    }
+    catch (...) {
+        syslog(LOG_ERR, "ReadConfig: Failed to read 'zone'. Default will be used.");
+        return false;
+    }
+
+    try {
+        if (m_j_config.contains("subzone") && m_j_config["subzone"].is_number()) { 
+            m_bDebug = m_j_config["subzone"].get<bool>();
+        } else {
+            syslog(LOG_ERR, "ReadConfig: Failed to read 'subzone'. Default will be used.");
+            return false;
+        }
+
+        if (m_bDebug) {
+            syslog(LOG_DEBUG, "ReadConfig: 'subzone' set to %d", m_subzone);
+        }
+    }
+    catch (...) {
+        syslog(LOG_ERR, "ReadConfig: Failed to read 'subzone'. Default will be used.");
+        return false;
+    }
+
+    try {
+        if (m_j_config.contains("longitude") && m_j_config["longitude"].is_number()) { 
+            m_longitude = m_j_config["longitude"].get<bool>();
+        } else {
+            syslog(LOG_ERR, "ReadConfig: Failed to read 'longitude'. Default will be used.");
+            return false;
+        }
+
+        if (m_bDebug) {
+            syslog(LOG_DEBUG, "ReadConfig: 'longitude' set to %f", m_longitude);
+        }
+    }
+    catch (...) {
+        syslog(LOG_ERR, "ReadConfig: Failed to read 'longitude'. Default will be used.");
+        return false;
+    }
+
+    try {
+        if (m_j_config.contains("latitude") && m_j_config["latitude"].is_number()) { 
+            m_latitude = m_j_config["latitude"].get<bool>();
+        } else {
+            syslog(LOG_ERR, "ReadConfig: Failed to read 'latitude'. Default will be used.");
+            return false;
+        }
+
+        if (m_bDebug) {
+            syslog(LOG_DEBUG, "ReadConfig: 'latitude' set to %f", m_latitude);
+        }
+    }
+    catch (...) {
+        syslog(LOG_ERR, "ReadConfig: Failed to read 'latitude'. Default will be used.");
+        return false;
+    }
+
+    try {
+        if (m_j_config.contains("sunrise-enable") && m_j_config["sunrise-enable"].is_boolean()) { 
+            m_bSunRiseEvent = m_j_config["sunrise-enable"].get<bool>();
+        } else {
+            syslog(LOG_ERR, "ReadConfig: Failed to read 'sunrise-debug'. Default will be used.");
+            return false;
+        }
+
+        if (m_bDebug) {
+            syslog(LOG_DEBUG, "ReadConfig: 'sunrise-enable' set to %s", m_bSunRiseEvent ? "true" : "false");
+        }
+    }
+    catch (...) {
+        syslog(LOG_ERR, "ReadConfig: Failed to read 'sunrise-enable'. Default will be used.");
+        return false;
+    }
+
+    try {
+        if (m_j_config.contains("sunrise-twilight-enable") && m_j_config["sunrise-twilight-enable"].is_boolean()) { 
+            m_bSunRiseTwilightEvent = m_j_config["sunrise-twilight-enable"].get<bool>();
+        } else {
+            syslog(LOG_ERR, "ReadConfig: Failed to read 'sunrise-twilight-debug'. Default will be used.");
+            return false;
+        }
+
+        if (m_bDebug) {
+            syslog(LOG_DEBUG, "ReadConfig: 'sunrise-twilight-enable' set to %s", m_bSunRiseTwilightEvent ? "true" : "false");
+        }
+    }
+    catch (...) {
+        syslog(LOG_ERR, "ReadConfig: Failed to read 'sunrise-twilight-enable'. Default will be used.");
+        return false;
+    }
+
+    try {
+        if (m_j_config.contains("sunset-enable") && m_j_config["sunset-enable"].is_boolean()) { 
+            m_bSunSetEvent = m_j_config["sunset-enable"].get<bool>();
+        } else {
+            syslog(LOG_ERR, "ReadConfig: Failed to read 'sunset-debug'. Default will be used.");
+            return false;
+        }
+
+        if (m_bDebug) {
+            syslog(LOG_DEBUG, "ReadConfig: 'sunset-enable' set to %s", m_bSunSetEvent ? "true" : "false");
+        }
+    }
+    catch (...) {
+        syslog(LOG_ERR, "ReadConfig: Failed to read 'sunset-enable'. Default will be used.");
+        return false;
+    }
+
+    try {
+        if (m_j_config.contains("sunset-twilight-enable") && m_j_config["sunset-twilight-enable"].is_boolean()) { 
+            m_bSunSetTwilightEvent = m_j_config["sunset-twilight-enable"].get<bool>();
+        } else {
+            syslog(LOG_ERR, "ReadConfig: Failed to read 'sunset-twilight-debug'. Default will be used.");
+            return false;
+        }
+
+        if (m_bDebug) {
+            syslog(LOG_DEBUG, "ReadConfig: 'sunset-twilight-enable' set to %s", m_bSunSetTwilightEvent ? "true" : "false");
+        }
+    }
+    catch (...) {
+        syslog(LOG_ERR, "ReadConfig: Failed to read 'sunset-twilight-enable'. Default will be used.");
+        return false;
+    }
+
+    // if (!readEncryptionKey(m_j_config.value("vscp-key-file", ""))) {
+    //     syslog(LOG_ERR, "[vscpl2drv-automation] WARNING!!! Default key will be used.");
+    //     // Not secure of course but something...
+    //     m_vscpkey = "Carpe diem quam minimum credula postero";
+    // }
+
+    
+
+    
 
     return true;
 }
@@ -821,42 +1024,42 @@ CAutomation::doSaveConfig(void)
 bool
 CAutomation::parseHLO(uint16_t size, uint8_t* inbuf, CHLO* phlo)
 {
-    // Check pointers
-    if (NULL == inbuf) {
-        syslog(
-          LOG_ERR,
-          "[vscpl2drv-automation] HLO parser: HLO in-buffer pointer is NULL.");
-        return false;
-    }
+    // // Check pointers
+    // if (NULL == inbuf) {
+    //     syslog(
+    //       LOG_ERR,
+    //       "[vscpl2drv-automation] HLO parser: HLO in-buffer pointer is NULL.");
+    //     return false;
+    // }
 
-    if (NULL == phlo) {
-        syslog(LOG_ERR,
-               "[vscpl2drv-automation] HLO parser: HLO obj pointer is NULL.");
-        return false;
-    }
+    // if (NULL == phlo) {
+    //     syslog(LOG_ERR,
+    //            "[vscpl2drv-automation] HLO parser: HLO obj pointer is NULL.");
+    //     return false;
+    // }
 
-    if (!size) {
-        syslog(LOG_ERR,
-               "[vscpl2drv-automation] HLO parser: HLO buffer size is zero.");
-        return false;
-    }
+    // if (!size) {
+    //     syslog(LOG_ERR,
+    //            "[vscpl2drv-automation] HLO parser: HLO buffer size is zero.");
+    //     return false;
+    // }
 
-    XML_Parser xmlParser = XML_ParserCreate("UTF-8");
-    XML_SetUserData(xmlParser, this);
-    XML_SetElementHandler(xmlParser, startHLOParser, endHLOParser);
+    // XML_Parser xmlParser = XML_ParserCreate("UTF-8");
+    // XML_SetUserData(xmlParser, this);
+    // XML_SetElementHandler(xmlParser, startHLOParser, endHLOParser);
 
-    void* buf = XML_GetBuffer(xmlParser, XML_BUFF_SIZE);
+    // void* buf = XML_GetBuffer(xmlParser, XML_BUFF_SIZE);
 
-    // Copy in the HLO object
-    memcpy(buf, inbuf, size);
+    // // Copy in the HLO object
+    // memcpy(buf, inbuf, size);
 
-    if (!XML_ParseBuffer(xmlParser, size, size == 0)) {
-        syslog(LOG_ERR, "[vscpl2drv-automation] Failed parse XML setup.");
-        XML_ParserFree(xmlParser);
-        return false;
-    }
+    // if (!XML_ParseBuffer(xmlParser, size, size == 0)) {
+    //     syslog(LOG_ERR, "[vscpl2drv-automation] Failed parse XML setup.");
+    //     XML_ParserFree(xmlParser);
+    //     return false;
+    // }
 
-    XML_ParserFree(xmlParser);
+    // XML_ParserFree(xmlParser);
 
     return true;
 }
@@ -868,591 +1071,593 @@ CAutomation::parseHLO(uint16_t size, uint8_t* inbuf, CHLO* phlo)
 bool
 CAutomation::handleHLO(vscpEvent* pEvent)
 {
-    char buf[512]; // Working buffer
-    vscpEventEx ex;
+    json j;
 
-    // Check pointers
-    if (NULL == pEvent) {
-        syslog(LOG_ERR,
-               "[vscpl2drv-automation] HLO handler: NULL event pointer.");
-        return false;
-    }
+    // char buf[512]; // Working buffer
+    // vscpEventEx ex;
 
-    CHLO hlo;
-    if (!parseHLO(pEvent->sizeData, pEvent->pdata, &hlo)) {
-        syslog(LOG_ERR, "[vscpl2drv-automation] Failed to parse HLO.");
-        return false;
-    }
+    // // Check pointers
+    // if (NULL == pEvent) {
+    //     syslog(LOG_ERR,
+    //            "[vscpl2drv-automation] HLO handler: NULL event pointer.");
+    //     return false;
+    // }
 
-    ex.obid = 0;
-    ex.head = 0;
-    ex.timestamp = vscp_makeTimeStamp();
-    vscp_setEventExToNow(&ex); // Set time to current time
-    ex.vscp_class = VSCP_CLASS2_HLO;
-    ex.vscp_type = VSCP2_TYPE_HLO_RESPONSE;
-    m_guid.writeGUID(ex.GUID);
+    // CHLO hlo;
+    // if (!parseHLO(pEvent->sizeData, pEvent->pdata, &hlo)) {
+    //     syslog(LOG_ERR, "[vscpl2drv-automation] Failed to parse HLO.");
+    //     return false;
+    // }
 
-    switch (hlo.m_op) {
+    // ex.obid = 0;
+    // ex.head = 0;
+    // ex.timestamp = vscp_makeTimeStamp();
+    // vscp_setEventExToNow(&ex); // Set time to current time
+    // ex.vscp_class = VSCP_CLASS2_HLO;
+    // ex.vscp_type = VSCP2_TYPE_HLO_RESPONSE;
+    // m_guid.writeGUID(ex.GUID);
 
-        case HLO_OP_NOOP:
-            // Send positive response
-            sprintf(buf,
-                    HLO_CMD_REPLY_TEMPLATE,
-                    "noop",
-                    "OK",
-                    "NOOP commaned executed correctly.");
+    // switch (hlo.m_op) {
 
-            memset(ex.data, 0, sizeof(ex.data));
-            ex.sizeData = strlen(buf);
-            memcpy(ex.data, buf, ex.sizeData);
+    //     case HLO_OP_NOOP:
+    //         // Send positive response
+    //         sprintf(buf,
+    //                 HLO_CMD_REPLY_TEMPLATE,
+    //                 "noop",
+    //                 "OK",
+    //                 "NOOP commaned executed correctly.");
 
-            // Put event in receive queue
-            return eventExToReceiveQueue(ex);
+    //         memset(ex.data, 0, sizeof(ex.data));
+    //         ex.sizeData = strlen(buf);
+    //         memcpy(ex.data, buf, ex.sizeData);
 
-        case HLO_OP_READ_VAR:
-            if ("SUNRISE" == hlo.m_name) {
-                sprintf(
-                  buf,
-                  HLO_READ_VAR_REPLY_TEMPLATE,
-                  "sunrise",
-                  "OK",
-                  VSCP_REMOTE_VARIABLE_CODE_DATETIME,
-                  vscp_convertToBase64(getSunriseTime().getISODateTime()).c_str());
-            } else if ("SUNSET" == hlo.m_name) {
-                sprintf(
-                  buf,
-                  HLO_READ_VAR_REPLY_TEMPLATE,
-                  "sunset",
-                  "OK",
-                  VSCP_REMOTE_VARIABLE_CODE_DATETIME,
-                  vscp_convertToBase64(getSunsetTime().getISODateTime()).c_str());
-            } else if ("SUNRISE-TWILIGHT" == hlo.m_name) {
-                sprintf(buf,
-                        HLO_READ_VAR_REPLY_TEMPLATE,
-                        "sunrise-twilight",
-                        "OK",
-                        VSCP_REMOTE_VARIABLE_CODE_DATETIME,
-                        vscp_convertToBase64(
-                          getCivilTwilightSunriseTime().getISODateTime())
-                          .c_str());
-            } else if ("SUNSET-TWILIGHT" == hlo.m_name) {
-                sprintf(
-                  buf,
-                  HLO_READ_VAR_REPLY_TEMPLATE,
-                  "sunset-twilight",
-                  "OK",
-                  VSCP_REMOTE_VARIABLE_CODE_DATETIME,
-                  vscp_convertToBase64(getCivilTwilightSunsetTime().getISODateTime())
-                    .c_str());
-            } else if ("NOON" == hlo.m_name) {
-                sprintf(buf,
-                        HLO_READ_VAR_REPLY_TEMPLATE,
-                        "noon",
-                        "OK",
-                        VSCP_REMOTE_VARIABLE_CODE_DATETIME,
-                        vscp_convertToBase64(m_noonTime.getISODateTime()).c_str());
-            } else if ("SENT-SUNRISE" == hlo.m_name) {
-                sprintf(buf,
-                        HLO_READ_VAR_REPLY_TEMPLATE,
-                        "sent-sunrise",
-                        "OK",
-                        VSCP_REMOTE_VARIABLE_CODE_DATETIME,
-                        vscp_convertToBase64(getSentSunriseTime().getISODateTime())
-                          .c_str());
-            } else if ("SENT-SUNSET" == hlo.m_name) {
-                sprintf(buf,
-                        HLO_READ_VAR_REPLY_TEMPLATE,
-                        "sent-sunset",
-                        "OK",
-                        VSCP_REMOTE_VARIABLE_CODE_DATETIME,
-                        vscp_convertToBase64(getSentSunsetTime().getISODateTime())
-                          .c_str());
-            } else if ("SENT-SUNRISE-TWILIGHT" == hlo.m_name) {
-                sprintf(buf,
-                        HLO_READ_VAR_REPLY_TEMPLATE,
-                        "sent-sunrise-twilight",
-                        "OK",
-                        VSCP_REMOTE_VARIABLE_CODE_DATETIME,
-                        vscp_convertToBase64(
-                          getSentCivilTwilightSunriseTime().getISODateTime())
-                          .c_str());
-            } else if ("SENT-SUNSET-TWILIGHT" == hlo.m_name) {
-                sprintf(buf,
-                        HLO_READ_VAR_REPLY_TEMPLATE,
-                        "sent-sunset-twilight",
-                        "OK",
-                        VSCP_REMOTE_VARIABLE_CODE_DATETIME,
-                        vscp_convertToBase64(
-                          getSentCivilTwilightSunsetTime().getISODateTime())
-                          .c_str());
-            } else if ("SENT-SUNRISE-TWILIGHT" == hlo.m_name) {
-                sprintf(buf,
-                        HLO_READ_VAR_REPLY_TEMPLATE,
-                        "sent-sunrise-twilight",
-                        "OK",
-                        VSCP_REMOTE_VARIABLE_CODE_DATETIME,
-                        vscp_convertToBase64(
-                          getSentCivilTwilightSunriseTime().getISODateTime())
-                          .c_str());
-            } else if ("SENT-NOON" == hlo.m_name) {
-                sprintf(buf,
-                        HLO_READ_VAR_REPLY_TEMPLATE,
-                        "sent-noon",
-                        "OK",
-                        VSCP_REMOTE_VARIABLE_CODE_DATETIME,
-                        getSentNoonTime().getISODateTime().c_str());
-            } else if ("ENABLE-SUNRISE" == hlo.m_name) {
-                sprintf(buf,
-                        HLO_READ_VAR_REPLY_TEMPLATE,
-                        "enable-sunrise",
-                        "OK",
-                        VSCP_REMOTE_VARIABLE_CODE_BOOLEAN,
-                        vscp_convertToBase64(m_bSunRiseEvent ? std::string("true")
-                                                        : std::string("false"))
-                          .c_str());
-            } else if ("ENABLE-SUNSET" == hlo.m_name) {
-                sprintf(buf,
-                        HLO_READ_VAR_REPLY_TEMPLATE,
-                        "enable-sunset",
-                        "OK",
-                        VSCP_REMOTE_VARIABLE_CODE_BOOLEAN,
-                        vscp_convertToBase64(m_bSunSetEvent ? std::string("true")
-                                                       : std::string("false"))
-                          .c_str());
-            } else if ("ENABLE-SUNRISE-TWILIGHT" == hlo.m_name) {
-                sprintf(buf,
-                        HLO_READ_VAR_REPLY_TEMPLATE,
-                        "enable-sunrise-twilight",
-                        "OK",
-                        VSCP_REMOTE_VARIABLE_CODE_BOOLEAN,
-                        vscp_convertToBase64(m_bSunRiseTwilightEvent
-                                          ? std::string("true")
-                                          : std::string("false"))
-                          .c_str());
-            } else if ("ENABLE-SUNSET-TWILIGHT" == hlo.m_name) {
-                sprintf(buf,
-                        HLO_READ_VAR_REPLY_TEMPLATE,
-                        "enable-sunset-twilight",
-                        "OK",
-                        VSCP_REMOTE_VARIABLE_CODE_BOOLEAN,
-                        vscp_convertToBase64(m_bSunSetTwilightEvent
-                                          ? std::string("true")
-                                          : std::string("false"))
-                          .c_str());
-            } else if ("ENABLE-NOON" == hlo.m_name) {
-                sprintf(buf,
-                        HLO_READ_VAR_REPLY_TEMPLATE,
-                        "enable-noon",
-                        "OK",
-                        VSCP_REMOTE_VARIABLE_CODE_BOOLEAN,
-                        vscp_convertToBase64(m_bNoonEvent ? std::string("true")
-                                                     : std::string("false"))
-                          .c_str());
-            } else if ("LONGITUDE" == hlo.m_name) {
-                sprintf(buf,
-                        HLO_READ_VAR_REPLY_TEMPLATE,
-                        "longitude",
-                        "OK",
-                        VSCP_REMOTE_VARIABLE_CODE_DOUBLE,
-                        vscp_convertToBase64(getLongitudeStr()).c_str());
-            } else if ("LATITUDE" == hlo.m_name) {
-                sprintf(buf,
-                        HLO_READ_VAR_REPLY_TEMPLATE,
-                        "latitude",
-                        "OK",
-                        VSCP_REMOTE_VARIABLE_CODE_DOUBLE,
-                        vscp_convertToBase64(getLatitudeStr()).c_str());
-            } else if ("ZONE" == hlo.m_name) {
-                sprintf(buf,
-                        HLO_READ_VAR_REPLY_TEMPLATE,
-                        "zone",
-                        "OK",
-                        VSCP_REMOTE_VARIABLE_CODE_INTEGER,
-                        vscp_convertToBase64(getZoneStr()).c_str());
-            } else if ("SUBZONE" == hlo.m_name) {
-                sprintf(buf,
-                        HLO_READ_VAR_REPLY_TEMPLATE,
-                        "subzone",
-                        "OK",
-                        VSCP_REMOTE_VARIABLE_CODE_INTEGER,
-                        vscp_convertToBase64(getSubZoneStr()).c_str());
-            } else if ("DAYLENGTH" == hlo.m_name) {
-                sprintf(buf,
-                        HLO_READ_VAR_REPLY_TEMPLATE,
-                        "daylength",
-                        "OK",
-                        VSCP_REMOTE_VARIABLE_CODE_DOUBLE,
-                        vscp_convertToBase64(getDayLengthStr()).c_str());
-            } else if ("DECLINATION" == hlo.m_name) {
-                sprintf(buf,
-                        HLO_READ_VAR_REPLY_TEMPLATE,
-                        "declination",
-                        "OK",
-                        VSCP_REMOTE_VARIABLE_CODE_DOUBLE,
-                        vscp_convertToBase64(getDeclinationStr()).c_str());
-            } else if ("SUN-MAX-ALTITUDE" == hlo.m_name) {
-                sprintf(buf,
-                        HLO_READ_VAR_REPLY_TEMPLATE,
-                        "sun-max-altitude",
-                        "OK",
-                        VSCP_REMOTE_VARIABLE_CODE_DOUBLE,
-                        vscp_convertToBase64(getSunMaxAltitudeStr()).c_str());
-            } else if ("LAST-CALCULATION" == hlo.m_name) {
-                sprintf(buf,
-                        HLO_READ_VAR_REPLY_TEMPLATE,
-                        "last-calculation",
-                        "OK",
-                        VSCP_REMOTE_VARIABLE_CODE_DATETIME,
-                        vscp_convertToBase64(getLastCalculation().getISODateTime())
-                          .c_str());
-            } else {
-                sprintf(
-                  buf,
-                  HLO_READ_VAR_ERR_REPLY_TEMPLATE,
-                  hlo.m_name.c_str(),
-                  ERR_VARIABLE_UNKNOWN,
-                  vscp_convertToBase64(std::string("Unknown variable")).c_str());
-            }
-            break;
+    //         // Put event in receive queue
+    //         return eventExToReceiveQueue(ex);
 
-        case HLO_OP_WRITE_VAR:
-            if ("SUNRISE" == hlo.m_name) {
-                // Read Only variable
-                sprintf(buf,
-                        HLO_READ_VAR_ERR_REPLY_TEMPLATE,
-                        "sunrise",
-                        VSCP_REMOTE_VARIABLE_CODE_BOOLEAN,
-                        "Variable is read only.");
-            } else if ("SUNSET" == hlo.m_name) {
-                // Read Only variable
-                sprintf(buf,
-                        HLO_READ_VAR_ERR_REPLY_TEMPLATE,
-                        "sunset",
-                        VSCP_REMOTE_VARIABLE_CODE_BOOLEAN,
-                        "Variable is read only.");
-            } else if ("SUNRISE-TWILIGHT" == hlo.m_name) {
-                // Read Only variable
-                sprintf(buf,
-                        HLO_READ_VAR_ERR_REPLY_TEMPLATE,
-                        "sunrise-twilight",
-                        VSCP_REMOTE_VARIABLE_CODE_BOOLEAN,
-                        "Variable is read only.");
-            } else if ("SUNSET-TWILIGHT" == hlo.m_name) {
-                // Read Only variable
-                sprintf(buf,
-                        HLO_READ_VAR_ERR_REPLY_TEMPLATE,
-                        "sunset-twilight",
-                        VSCP_REMOTE_VARIABLE_CODE_BOOLEAN,
-                        "Variable is read only.");
-            } else if ("NOON" == hlo.m_name) {
-                // Read Only variable
-                sprintf(buf,
-                        HLO_READ_VAR_ERR_REPLY_TEMPLATE,
-                        "noon",
-                        VSCP_REMOTE_VARIABLE_CODE_BOOLEAN,
-                        "Variable is read only.");
-            } else if ("SENT-SUNRISE" == hlo.m_name) {
-                // Read Only variable
-                sprintf(buf,
-                        HLO_READ_VAR_ERR_REPLY_TEMPLATE,
-                        "sent-sunrise",
-                        ERR_VARIABLE_READ_ONLY,
-                        "Variable is read only.");
-            } else if ("SENT-SUNSET" == hlo.m_name) {
-                // Read Only variable
-                sprintf(buf,
-                        HLO_READ_VAR_ERR_REPLY_TEMPLATE,
-                        "sent-sunset",
-                        ERR_VARIABLE_READ_ONLY,
-                        "Variable is read only.");
-            } else if ("SENT-SUNRISE-TWILIGHT" == hlo.m_name) {
-                // Read Only variable
-                sprintf(buf,
-                        HLO_READ_VAR_ERR_REPLY_TEMPLATE,
-                        "sent-sunrise-twilight",
-                        ERR_VARIABLE_READ_ONLY,
-                        "Variable is read only.");
-            } else if ("SENT-SUNSET-TWILIGHT" == hlo.m_name) {
-                // Read Only variable
-                sprintf(buf,
-                        HLO_READ_VAR_ERR_REPLY_TEMPLATE,
-                        "sent-sunset-twilight",
-                        ERR_VARIABLE_READ_ONLY,
-                        "Variable is read only.");
-            } else if ("SENT-SUNRISE-TWILIGHT" == hlo.m_name) {
+    //     case HLO_OP_READ_VAR:
+    //         if ("SUNRISE" == hlo.m_name) {
+    //             sprintf(
+    //               buf,
+    //               HLO_READ_VAR_REPLY_TEMPLATE,
+    //               "sunrise",
+    //               "OK",
+    //               VSCP_REMOTE_VARIABLE_CODE_DATETIME,
+    //               vscp_convertToBase64(getSunriseTime().getISODateTime()).c_str());
+    //         } else if ("SUNSET" == hlo.m_name) {
+    //             sprintf(
+    //               buf,
+    //               HLO_READ_VAR_REPLY_TEMPLATE,
+    //               "sunset",
+    //               "OK",
+    //               VSCP_REMOTE_VARIABLE_CODE_DATETIME,
+    //               vscp_convertToBase64(getSunsetTime().getISODateTime()).c_str());
+    //         } else if ("SUNRISE-TWILIGHT" == hlo.m_name) {
+    //             sprintf(buf,
+    //                     HLO_READ_VAR_REPLY_TEMPLATE,
+    //                     "sunrise-twilight",
+    //                     "OK",
+    //                     VSCP_REMOTE_VARIABLE_CODE_DATETIME,
+    //                     vscp_convertToBase64(
+    //                       getCivilTwilightSunriseTime().getISODateTime())
+    //                       .c_str());
+    //         } else if ("SUNSET-TWILIGHT" == hlo.m_name) {
+    //             sprintf(
+    //               buf,
+    //               HLO_READ_VAR_REPLY_TEMPLATE,
+    //               "sunset-twilight",
+    //               "OK",
+    //               VSCP_REMOTE_VARIABLE_CODE_DATETIME,
+    //               vscp_convertToBase64(getCivilTwilightSunsetTime().getISODateTime())
+    //                 .c_str());
+    //         } else if ("NOON" == hlo.m_name) {
+    //             sprintf(buf,
+    //                     HLO_READ_VAR_REPLY_TEMPLATE,
+    //                     "noon",
+    //                     "OK",
+    //                     VSCP_REMOTE_VARIABLE_CODE_DATETIME,
+    //                     vscp_convertToBase64(m_noonTime.getISODateTime()).c_str());
+    //         } else if ("SENT-SUNRISE" == hlo.m_name) {
+    //             sprintf(buf,
+    //                     HLO_READ_VAR_REPLY_TEMPLATE,
+    //                     "sent-sunrise",
+    //                     "OK",
+    //                     VSCP_REMOTE_VARIABLE_CODE_DATETIME,
+    //                     vscp_convertToBase64(getSentSunriseTime().getISODateTime())
+    //                       .c_str());
+    //         } else if ("SENT-SUNSET" == hlo.m_name) {
+    //             sprintf(buf,
+    //                     HLO_READ_VAR_REPLY_TEMPLATE,
+    //                     "sent-sunset",
+    //                     "OK",
+    //                     VSCP_REMOTE_VARIABLE_CODE_DATETIME,
+    //                     vscp_convertToBase64(getSentSunsetTime().getISODateTime())
+    //                       .c_str());
+    //         } else if ("SENT-SUNRISE-TWILIGHT" == hlo.m_name) {
+    //             sprintf(buf,
+    //                     HLO_READ_VAR_REPLY_TEMPLATE,
+    //                     "sent-sunrise-twilight",
+    //                     "OK",
+    //                     VSCP_REMOTE_VARIABLE_CODE_DATETIME,
+    //                     vscp_convertToBase64(
+    //                       getSentCivilTwilightSunriseTime().getISODateTime())
+    //                       .c_str());
+    //         } else if ("SENT-SUNSET-TWILIGHT" == hlo.m_name) {
+    //             sprintf(buf,
+    //                     HLO_READ_VAR_REPLY_TEMPLATE,
+    //                     "sent-sunset-twilight",
+    //                     "OK",
+    //                     VSCP_REMOTE_VARIABLE_CODE_DATETIME,
+    //                     vscp_convertToBase64(
+    //                       getSentCivilTwilightSunsetTime().getISODateTime())
+    //                       .c_str());
+    //         } else if ("SENT-SUNRISE-TWILIGHT" == hlo.m_name) {
+    //             sprintf(buf,
+    //                     HLO_READ_VAR_REPLY_TEMPLATE,
+    //                     "sent-sunrise-twilight",
+    //                     "OK",
+    //                     VSCP_REMOTE_VARIABLE_CODE_DATETIME,
+    //                     vscp_convertToBase64(
+    //                       getSentCivilTwilightSunriseTime().getISODateTime())
+    //                       .c_str());
+    //         } else if ("SENT-NOON" == hlo.m_name) {
+    //             sprintf(buf,
+    //                     HLO_READ_VAR_REPLY_TEMPLATE,
+    //                     "sent-noon",
+    //                     "OK",
+    //                     VSCP_REMOTE_VARIABLE_CODE_DATETIME,
+    //                     getSentNoonTime().getISODateTime().c_str());
+    //         } else if ("ENABLE-SUNRISE" == hlo.m_name) {
+    //             sprintf(buf,
+    //                     HLO_READ_VAR_REPLY_TEMPLATE,
+    //                     "enable-sunrise",
+    //                     "OK",
+    //                     VSCP_REMOTE_VARIABLE_CODE_BOOLEAN,
+    //                     vscp_convertToBase64(m_bSunRiseEvent ? std::string("true")
+    //                                                     : std::string("false"))
+    //                       .c_str());
+    //         } else if ("ENABLE-SUNSET" == hlo.m_name) {
+    //             sprintf(buf,
+    //                     HLO_READ_VAR_REPLY_TEMPLATE,
+    //                     "enable-sunset",
+    //                     "OK",
+    //                     VSCP_REMOTE_VARIABLE_CODE_BOOLEAN,
+    //                     vscp_convertToBase64(m_bSunSetEvent ? std::string("true")
+    //                                                    : std::string("false"))
+    //                       .c_str());
+    //         } else if ("ENABLE-SUNRISE-TWILIGHT" == hlo.m_name) {
+    //             sprintf(buf,
+    //                     HLO_READ_VAR_REPLY_TEMPLATE,
+    //                     "enable-sunrise-twilight",
+    //                     "OK",
+    //                     VSCP_REMOTE_VARIABLE_CODE_BOOLEAN,
+    //                     vscp_convertToBase64(m_bSunRiseTwilightEvent
+    //                                       ? std::string("true")
+    //                                       : std::string("false"))
+    //                       .c_str());
+    //         } else if ("ENABLE-SUNSET-TWILIGHT" == hlo.m_name) {
+    //             sprintf(buf,
+    //                     HLO_READ_VAR_REPLY_TEMPLATE,
+    //                     "enable-sunset-twilight",
+    //                     "OK",
+    //                     VSCP_REMOTE_VARIABLE_CODE_BOOLEAN,
+    //                     vscp_convertToBase64(m_bSunSetTwilightEvent
+    //                                       ? std::string("true")
+    //                                       : std::string("false"))
+    //                       .c_str());
+    //         } else if ("ENABLE-NOON" == hlo.m_name) {
+    //             sprintf(buf,
+    //                     HLO_READ_VAR_REPLY_TEMPLATE,
+    //                     "enable-noon",
+    //                     "OK",
+    //                     VSCP_REMOTE_VARIABLE_CODE_BOOLEAN,
+    //                     vscp_convertToBase64(m_bNoonEvent ? std::string("true")
+    //                                                  : std::string("false"))
+    //                       .c_str());
+    //         } else if ("LONGITUDE" == hlo.m_name) {
+    //             sprintf(buf,
+    //                     HLO_READ_VAR_REPLY_TEMPLATE,
+    //                     "longitude",
+    //                     "OK",
+    //                     VSCP_REMOTE_VARIABLE_CODE_DOUBLE,
+    //                     vscp_convertToBase64(getLongitudeStr()).c_str());
+    //         } else if ("LATITUDE" == hlo.m_name) {
+    //             sprintf(buf,
+    //                     HLO_READ_VAR_REPLY_TEMPLATE,
+    //                     "latitude",
+    //                     "OK",
+    //                     VSCP_REMOTE_VARIABLE_CODE_DOUBLE,
+    //                     vscp_convertToBase64(getLatitudeStr()).c_str());
+    //         } else if ("ZONE" == hlo.m_name) {
+    //             sprintf(buf,
+    //                     HLO_READ_VAR_REPLY_TEMPLATE,
+    //                     "zone",
+    //                     "OK",
+    //                     VSCP_REMOTE_VARIABLE_CODE_INTEGER,
+    //                     vscp_convertToBase64(getZoneStr()).c_str());
+    //         } else if ("SUBZONE" == hlo.m_name) {
+    //             sprintf(buf,
+    //                     HLO_READ_VAR_REPLY_TEMPLATE,
+    //                     "subzone",
+    //                     "OK",
+    //                     VSCP_REMOTE_VARIABLE_CODE_INTEGER,
+    //                     vscp_convertToBase64(getSubZoneStr()).c_str());
+    //         } else if ("DAYLENGTH" == hlo.m_name) {
+    //             sprintf(buf,
+    //                     HLO_READ_VAR_REPLY_TEMPLATE,
+    //                     "daylength",
+    //                     "OK",
+    //                     VSCP_REMOTE_VARIABLE_CODE_DOUBLE,
+    //                     vscp_convertToBase64(getDayLengthStr()).c_str());
+    //         } else if ("DECLINATION" == hlo.m_name) {
+    //             sprintf(buf,
+    //                     HLO_READ_VAR_REPLY_TEMPLATE,
+    //                     "declination",
+    //                     "OK",
+    //                     VSCP_REMOTE_VARIABLE_CODE_DOUBLE,
+    //                     vscp_convertToBase64(getDeclinationStr()).c_str());
+    //         } else if ("SUN-MAX-ALTITUDE" == hlo.m_name) {
+    //             sprintf(buf,
+    //                     HLO_READ_VAR_REPLY_TEMPLATE,
+    //                     "sun-max-altitude",
+    //                     "OK",
+    //                     VSCP_REMOTE_VARIABLE_CODE_DOUBLE,
+    //                     vscp_convertToBase64(getSunMaxAltitudeStr()).c_str());
+    //         } else if ("LAST-CALCULATION" == hlo.m_name) {
+    //             sprintf(buf,
+    //                     HLO_READ_VAR_REPLY_TEMPLATE,
+    //                     "last-calculation",
+    //                     "OK",
+    //                     VSCP_REMOTE_VARIABLE_CODE_DATETIME,
+    //                     vscp_convertToBase64(getLastCalculation().getISODateTime())
+    //                       .c_str());
+    //         } else {
+    //             sprintf(
+    //               buf,
+    //               HLO_READ_VAR_ERR_REPLY_TEMPLATE,
+    //               hlo.m_name.c_str(),
+    //               ERR_VARIABLE_UNKNOWN,
+    //               vscp_convertToBase64(std::string("Unknown variable")).c_str());
+    //         }
+    //         break;
 
-            } else if ("SENT-NOON" == hlo.m_name) {
-                // Read Only variable
-                sprintf(buf,
-                        HLO_READ_VAR_ERR_REPLY_TEMPLATE,
-                        "sent-noon",
-                        ERR_VARIABLE_READ_ONLY,
-                        "Variable is read only.");
-            } else if ("ENABLE-SUNRISE" == hlo.m_name) {
-                if (VSCP_REMOTE_VARIABLE_CODE_BOOLEAN != hlo.m_varType) {
-                    // Wrong variable type
-                    sprintf(buf,
-                            HLO_READ_VAR_ERR_REPLY_TEMPLATE,
-                            "enable-sunrise",
-                            ERR_VARIABLE_WRONG_TYPE,
-                            "Variable type should be boolean.");
-                } else {
-                    vscp_trim(hlo.m_value);
-                    vscp_makeUpper(hlo.m_value);
-                    if ("TRUE" == hlo.m_value) {
-                        enableSunRiseEvent();
-                        sprintf(buf,
-                                HLO_READ_VAR_REPLY_TEMPLATE,
-                                "enable-sunrise",
-                                "OK",
-                                VSCP_REMOTE_VARIABLE_CODE_BOOLEAN,
-                                vscp_convertToBase64(isSendSunriseEvent()
-                                                  ? std::string("true")
-                                                  : std::string("false"))
-                                  .c_str());
-                    } else {
-                        disableSunRiseEvent();
-                        sprintf(buf,
-                                HLO_READ_VAR_REPLY_TEMPLATE,
-                                "enable-sunrise",
-                                "OK",
-                                VSCP_REMOTE_VARIABLE_CODE_BOOLEAN,
-                                vscp_convertToBase64(isSendSunriseEvent()
-                                                  ? std::string("true")
-                                                  : std::string("false"))
-                                  .c_str());
-                    }
-                }
-            } else if ("ENABLE-SUNSET" == hlo.m_name) {
-                if (VSCP_REMOTE_VARIABLE_CODE_BOOLEAN != hlo.m_varType) {
-                    // Wrong variable type
-                    sprintf(buf,
-                            HLO_READ_VAR_ERR_REPLY_TEMPLATE,
-                            "enable-sunset",
-                            ERR_VARIABLE_WRONG_TYPE,
-                            "Variable type should be boolean.");
-                } else {
-                    vscp_trim(hlo.m_value);
-                    vscp_makeUpper(hlo.m_value);
-                    if ("TRUE" == hlo.m_value) {
-                        enableSunSetEvent();
-                        sprintf(buf,
-                                HLO_READ_VAR_REPLY_TEMPLATE,
-                                "enable-sunset",
-                                "OK",
-                                VSCP_REMOTE_VARIABLE_CODE_BOOLEAN,
-                                vscp_convertToBase64(isSendSunsetEvent()
-                                                  ? std::string("true")
-                                                  : std::string("false"))
-                                  .c_str());
-                    } else {
-                        disableSunSetEvent();
-                        sprintf(buf,
-                                HLO_READ_VAR_REPLY_TEMPLATE,
-                                "enable-sunset",
-                                "OK",
-                                VSCP_REMOTE_VARIABLE_CODE_BOOLEAN,
-                                vscp_convertToBase64(isSendSunsetEvent()
-                                                  ? std::string("true")
-                                                  : std::string("false"))
-                                  .c_str());
-                    }
-                }
-            } else if ("ENABLE-SUNRISE-TWILIGHT" == hlo.m_name) {
-                if (VSCP_REMOTE_VARIABLE_CODE_BOOLEAN != hlo.m_varType) {
-                    // Wrong variable type
-                    sprintf(buf,
-                            HLO_READ_VAR_ERR_REPLY_TEMPLATE,
-                            "enable-sunrise-twilight",
-                            ERR_VARIABLE_WRONG_TYPE,
-                            "Variable type should be boolean.");
-                } else {
-                    vscp_trim(hlo.m_value);
-                    vscp_makeUpper(hlo.m_value);
-                    if ("TRUE" == hlo.m_value) {
-                        enableSunRiseTwilightEvent();
-                        sprintf(buf,
-                                HLO_READ_VAR_REPLY_TEMPLATE,
-                                "enable-sunrise-twilight",
-                                "OK",
-                                VSCP_REMOTE_VARIABLE_CODE_BOOLEAN,
-                                vscp_convertToBase64(isSendSunriseTwilightEvent()
-                                                  ? std::string("true")
-                                                  : std::string("false"))
-                                  .c_str());
-                    } else {
-                        disableSunRiseEvent();
-                        sprintf(buf,
-                                HLO_READ_VAR_REPLY_TEMPLATE,
-                                "enable-sunrise-twilight",
-                                "OK",
-                                VSCP_REMOTE_VARIABLE_CODE_BOOLEAN,
-                                vscp_convertToBase64(isSendSunriseTwilightEvent()
-                                                  ? std::string("true")
-                                                  : std::string("false"))
-                                  .c_str());
-                    }
-                }
-            } else if ("ENABLE-SUNSET-TWILIGHT" == hlo.m_name) {
-                if (VSCP_REMOTE_VARIABLE_CODE_BOOLEAN != hlo.m_varType) {
-                    // Wrong variable type
-                    sprintf(buf,
-                            HLO_READ_VAR_ERR_REPLY_TEMPLATE,
-                            "enable-sunset-twilight",
-                            ERR_VARIABLE_WRONG_TYPE,
-                            "Variable type should be boolean.");
-                } else {
-                    vscp_trim(hlo.m_value);
-                    vscp_makeUpper(hlo.m_value);
-                    if ("TRUE" == hlo.m_value) {
-                        enableSunSetTwilightEvent();
-                        sprintf(buf,
-                                HLO_READ_VAR_REPLY_TEMPLATE,
-                                "enable-sunset-twilight",
-                                "OK",
-                                VSCP_REMOTE_VARIABLE_CODE_BOOLEAN,
-                                vscp_convertToBase64(isSendSunsetTwilightEvent()
-                                                  ? std::string("true")
-                                                  : std::string("false"))
-                                  .c_str());
-                    } else {
-                        disableSunSetTwilightEvent();
-                        sprintf(buf,
-                                HLO_READ_VAR_REPLY_TEMPLATE,
-                                "enable-sunset-twilight",
-                                "OK",
-                                VSCP_REMOTE_VARIABLE_CODE_BOOLEAN,
-                                vscp_convertToBase64(isSendSunsetTwilightEvent()
-                                                  ? std::string("true")
-                                                  : std::string("false"))
-                                  .c_str());
-                    }
-                }
-            } else if ("ENABLE-NOON" == hlo.m_name) {
-                if (VSCP_REMOTE_VARIABLE_CODE_BOOLEAN != hlo.m_varType) {
-                    // Wrong variable type
-                    sprintf(buf,
-                            HLO_READ_VAR_ERR_REPLY_TEMPLATE,
-                            "enable-noon",
-                            ERR_VARIABLE_WRONG_TYPE,
-                            "Variable type should be boolean.");
-                } else {
-                    vscp_trim(hlo.m_value);
-                    vscp_makeUpper(hlo.m_value);
-                    if ("TRUE" == hlo.m_value) {
-                        enableCalculatedNoonEvent();
-                        sprintf(buf,
-                                HLO_READ_VAR_REPLY_TEMPLATE,
-                                "enable-noon",
-                                "OK",
-                                VSCP_REMOTE_VARIABLE_CODE_BOOLEAN,
-                                vscp_convertToBase64(isSendCalculatedNoonEvent()
-                                                  ? std::string("true")
-                                                  : std::string("false"))
-                                  .c_str());
-                    } else {
-                        disableCalculatedNoonEvent();
-                        sprintf(buf,
-                                HLO_READ_VAR_REPLY_TEMPLATE,
-                                "enable-sunrise",
-                                "OK",
-                                VSCP_REMOTE_VARIABLE_CODE_BOOLEAN,
-                                vscp_convertToBase64(isSendCalculatedNoonEvent()
-                                                  ? std::string("true")
-                                                  : std::string("false"))
-                                  .c_str());
-                    }
-                }
-            } else if ("LONGITUDE" == hlo.m_name) {
-                if (VSCP_REMOTE_VARIABLE_CODE_DOUBLE != hlo.m_varType) {
-                    // Wrong variable type
-                    sprintf(buf,
-                            HLO_READ_VAR_ERR_REPLY_TEMPLATE,
-                            "enable-noon",
-                            ERR_VARIABLE_WRONG_TYPE,
-                            "Variable type should be boolean.");
-                }
-                sprintf(buf,
-                        HLO_READ_VAR_REPLY_TEMPLATE,
-                        "longitude",
-                        "OK",
-                        5,
-                        vscp_convertToBase64(getLongitudeStr()).c_str());
-            } else if ("LATITUDE" == hlo.m_name) {
-                sprintf(buf,
-                        HLO_READ_VAR_REPLY_TEMPLATE,
-                        "latitude",
-                        "OK",
-                        5,
-                        vscp_convertToBase64(getLatitudeStr()).c_str());
-            } else if ("ZONE" == hlo.m_name) {
-                sprintf(buf,
-                        HLO_READ_VAR_REPLY_TEMPLATE,
-                        "zone",
-                        "OK",
-                        3,
-                        vscp_convertToBase64(getZoneStr()).c_str());
-            } else if ("SUBZONE" == hlo.m_name) {
-                sprintf(buf,
-                        HLO_READ_VAR_REPLY_TEMPLATE,
-                        "subzone",
-                        "OK",
-                        3,
-                        vscp_convertToBase64(getSubZoneStr()).c_str());
-            } else if ("DAYLENGTH" == hlo.m_name) {
-                sprintf(buf,
-                        HLO_READ_VAR_REPLY_TEMPLATE,
-                        "daylength",
-                        "OK",
-                        5,
-                        vscp_convertToBase64(getDayLengthStr()).c_str());
-            } else if ("DECLINATION" == hlo.m_name) {
-                sprintf(buf,
-                        HLO_READ_VAR_REPLY_TEMPLATE,
-                        "declination",
-                        "OK",
-                        5,
-                        vscp_convertToBase64(getDeclinationStr()).c_str());
-            } else if ("SUN-MAX-ALTITUDE" == hlo.m_name) {
-                sprintf(buf,
-                        HLO_READ_VAR_REPLY_TEMPLATE,
-                        "sun-max-altitude",
-                        "OK",
-                        5,
-                        vscp_convertToBase64(getSunMaxAltitudeStr()).c_str());
-            } else if ("LAST-CALCULATION" == hlo.m_name) {
-                sprintf(buf,
-                        HLO_READ_VAR_REPLY_TEMPLATE,
-                        "last-calculation",
-                        "OK",
-                        13,
-                        vscp_convertToBase64(getLastCalculation().getISODateTime())
-                          .c_str());
-            } else {
-                sprintf(
-                  buf,
-                  HLO_READ_VAR_ERR_REPLY_TEMPLATE,
-                  hlo.m_name.c_str(),
-                  1,
-                  vscp_convertToBase64(std::string("Unknown variable")).c_str());
-            }
-            break;
+    //     case HLO_OP_WRITE_VAR:
+    //         if ("SUNRISE" == hlo.m_name) {
+    //             // Read Only variable
+    //             sprintf(buf,
+    //                     HLO_READ_VAR_ERR_REPLY_TEMPLATE,
+    //                     "sunrise",
+    //                     VSCP_REMOTE_VARIABLE_CODE_BOOLEAN,
+    //                     "Variable is read only.");
+    //         } else if ("SUNSET" == hlo.m_name) {
+    //             // Read Only variable
+    //             sprintf(buf,
+    //                     HLO_READ_VAR_ERR_REPLY_TEMPLATE,
+    //                     "sunset",
+    //                     VSCP_REMOTE_VARIABLE_CODE_BOOLEAN,
+    //                     "Variable is read only.");
+    //         } else if ("SUNRISE-TWILIGHT" == hlo.m_name) {
+    //             // Read Only variable
+    //             sprintf(buf,
+    //                     HLO_READ_VAR_ERR_REPLY_TEMPLATE,
+    //                     "sunrise-twilight",
+    //                     VSCP_REMOTE_VARIABLE_CODE_BOOLEAN,
+    //                     "Variable is read only.");
+    //         } else if ("SUNSET-TWILIGHT" == hlo.m_name) {
+    //             // Read Only variable
+    //             sprintf(buf,
+    //                     HLO_READ_VAR_ERR_REPLY_TEMPLATE,
+    //                     "sunset-twilight",
+    //                     VSCP_REMOTE_VARIABLE_CODE_BOOLEAN,
+    //                     "Variable is read only.");
+    //         } else if ("NOON" == hlo.m_name) {
+    //             // Read Only variable
+    //             sprintf(buf,
+    //                     HLO_READ_VAR_ERR_REPLY_TEMPLATE,
+    //                     "noon",
+    //                     VSCP_REMOTE_VARIABLE_CODE_BOOLEAN,
+    //                     "Variable is read only.");
+    //         } else if ("SENT-SUNRISE" == hlo.m_name) {
+    //             // Read Only variable
+    //             sprintf(buf,
+    //                     HLO_READ_VAR_ERR_REPLY_TEMPLATE,
+    //                     "sent-sunrise",
+    //                     ERR_VARIABLE_READ_ONLY,
+    //                     "Variable is read only.");
+    //         } else if ("SENT-SUNSET" == hlo.m_name) {
+    //             // Read Only variable
+    //             sprintf(buf,
+    //                     HLO_READ_VAR_ERR_REPLY_TEMPLATE,
+    //                     "sent-sunset",
+    //                     ERR_VARIABLE_READ_ONLY,
+    //                     "Variable is read only.");
+    //         } else if ("SENT-SUNRISE-TWILIGHT" == hlo.m_name) {
+    //             // Read Only variable
+    //             sprintf(buf,
+    //                     HLO_READ_VAR_ERR_REPLY_TEMPLATE,
+    //                     "sent-sunrise-twilight",
+    //                     ERR_VARIABLE_READ_ONLY,
+    //                     "Variable is read only.");
+    //         } else if ("SENT-SUNSET-TWILIGHT" == hlo.m_name) {
+    //             // Read Only variable
+    //             sprintf(buf,
+    //                     HLO_READ_VAR_ERR_REPLY_TEMPLATE,
+    //                     "sent-sunset-twilight",
+    //                     ERR_VARIABLE_READ_ONLY,
+    //                     "Variable is read only.");
+    //         } else if ("SENT-SUNRISE-TWILIGHT" == hlo.m_name) {
 
-        case HLO_OP_SAVE:
-            doSaveConfig();
-            break;
+    //         } else if ("SENT-NOON" == hlo.m_name) {
+    //             // Read Only variable
+    //             sprintf(buf,
+    //                     HLO_READ_VAR_ERR_REPLY_TEMPLATE,
+    //                     "sent-noon",
+    //                     ERR_VARIABLE_READ_ONLY,
+    //                     "Variable is read only.");
+    //         } else if ("ENABLE-SUNRISE" == hlo.m_name) {
+    //             if (VSCP_REMOTE_VARIABLE_CODE_BOOLEAN != hlo.m_varType) {
+    //                 // Wrong variable type
+    //                 sprintf(buf,
+    //                         HLO_READ_VAR_ERR_REPLY_TEMPLATE,
+    //                         "enable-sunrise",
+    //                         ERR_VARIABLE_WRONG_TYPE,
+    //                         "Variable type should be boolean.");
+    //             } else {
+    //                 vscp_trim(hlo.m_value);
+    //                 vscp_makeUpper(hlo.m_value);
+    //                 if ("TRUE" == hlo.m_value) {
+    //                     enableSunRiseEvent();
+    //                     sprintf(buf,
+    //                             HLO_READ_VAR_REPLY_TEMPLATE,
+    //                             "enable-sunrise",
+    //                             "OK",
+    //                             VSCP_REMOTE_VARIABLE_CODE_BOOLEAN,
+    //                             vscp_convertToBase64(isSendSunriseEvent()
+    //                                               ? std::string("true")
+    //                                               : std::string("false"))
+    //                               .c_str());
+    //                 } else {
+    //                     disableSunRiseEvent();
+    //                     sprintf(buf,
+    //                             HLO_READ_VAR_REPLY_TEMPLATE,
+    //                             "enable-sunrise",
+    //                             "OK",
+    //                             VSCP_REMOTE_VARIABLE_CODE_BOOLEAN,
+    //                             vscp_convertToBase64(isSendSunriseEvent()
+    //                                               ? std::string("true")
+    //                                               : std::string("false"))
+    //                               .c_str());
+    //                 }
+    //             }
+    //         } else if ("ENABLE-SUNSET" == hlo.m_name) {
+    //             if (VSCP_REMOTE_VARIABLE_CODE_BOOLEAN != hlo.m_varType) {
+    //                 // Wrong variable type
+    //                 sprintf(buf,
+    //                         HLO_READ_VAR_ERR_REPLY_TEMPLATE,
+    //                         "enable-sunset",
+    //                         ERR_VARIABLE_WRONG_TYPE,
+    //                         "Variable type should be boolean.");
+    //             } else {
+    //                 vscp_trim(hlo.m_value);
+    //                 vscp_makeUpper(hlo.m_value);
+    //                 if ("TRUE" == hlo.m_value) {
+    //                     enableSunSetEvent();
+    //                     sprintf(buf,
+    //                             HLO_READ_VAR_REPLY_TEMPLATE,
+    //                             "enable-sunset",
+    //                             "OK",
+    //                             VSCP_REMOTE_VARIABLE_CODE_BOOLEAN,
+    //                             vscp_convertToBase64(isSendSunsetEvent()
+    //                                               ? std::string("true")
+    //                                               : std::string("false"))
+    //                               .c_str());
+    //                 } else {
+    //                     disableSunSetEvent();
+    //                     sprintf(buf,
+    //                             HLO_READ_VAR_REPLY_TEMPLATE,
+    //                             "enable-sunset",
+    //                             "OK",
+    //                             VSCP_REMOTE_VARIABLE_CODE_BOOLEAN,
+    //                             vscp_convertToBase64(isSendSunsetEvent()
+    //                                               ? std::string("true")
+    //                                               : std::string("false"))
+    //                               .c_str());
+    //                 }
+    //             }
+    //         } else if ("ENABLE-SUNRISE-TWILIGHT" == hlo.m_name) {
+    //             if (VSCP_REMOTE_VARIABLE_CODE_BOOLEAN != hlo.m_varType) {
+    //                 // Wrong variable type
+    //                 sprintf(buf,
+    //                         HLO_READ_VAR_ERR_REPLY_TEMPLATE,
+    //                         "enable-sunrise-twilight",
+    //                         ERR_VARIABLE_WRONG_TYPE,
+    //                         "Variable type should be boolean.");
+    //             } else {
+    //                 vscp_trim(hlo.m_value);
+    //                 vscp_makeUpper(hlo.m_value);
+    //                 if ("TRUE" == hlo.m_value) {
+    //                     enableSunRiseTwilightEvent();
+    //                     sprintf(buf,
+    //                             HLO_READ_VAR_REPLY_TEMPLATE,
+    //                             "enable-sunrise-twilight",
+    //                             "OK",
+    //                             VSCP_REMOTE_VARIABLE_CODE_BOOLEAN,
+    //                             vscp_convertToBase64(isSendSunriseTwilightEvent()
+    //                                               ? std::string("true")
+    //                                               : std::string("false"))
+    //                               .c_str());
+    //                 } else {
+    //                     disableSunRiseEvent();
+    //                     sprintf(buf,
+    //                             HLO_READ_VAR_REPLY_TEMPLATE,
+    //                             "enable-sunrise-twilight",
+    //                             "OK",
+    //                             VSCP_REMOTE_VARIABLE_CODE_BOOLEAN,
+    //                             vscp_convertToBase64(isSendSunriseTwilightEvent()
+    //                                               ? std::string("true")
+    //                                               : std::string("false"))
+    //                               .c_str());
+    //                 }
+    //             }
+    //         } else if ("ENABLE-SUNSET-TWILIGHT" == hlo.m_name) {
+    //             if (VSCP_REMOTE_VARIABLE_CODE_BOOLEAN != hlo.m_varType) {
+    //                 // Wrong variable type
+    //                 sprintf(buf,
+    //                         HLO_READ_VAR_ERR_REPLY_TEMPLATE,
+    //                         "enable-sunset-twilight",
+    //                         ERR_VARIABLE_WRONG_TYPE,
+    //                         "Variable type should be boolean.");
+    //             } else {
+    //                 vscp_trim(hlo.m_value);
+    //                 vscp_makeUpper(hlo.m_value);
+    //                 if ("TRUE" == hlo.m_value) {
+    //                     enableSunSetTwilightEvent();
+    //                     sprintf(buf,
+    //                             HLO_READ_VAR_REPLY_TEMPLATE,
+    //                             "enable-sunset-twilight",
+    //                             "OK",
+    //                             VSCP_REMOTE_VARIABLE_CODE_BOOLEAN,
+    //                             vscp_convertToBase64(isSendSunsetTwilightEvent()
+    //                                               ? std::string("true")
+    //                                               : std::string("false"))
+    //                               .c_str());
+    //                 } else {
+    //                     disableSunSetTwilightEvent();
+    //                     sprintf(buf,
+    //                             HLO_READ_VAR_REPLY_TEMPLATE,
+    //                             "enable-sunset-twilight",
+    //                             "OK",
+    //                             VSCP_REMOTE_VARIABLE_CODE_BOOLEAN,
+    //                             vscp_convertToBase64(isSendSunsetTwilightEvent()
+    //                                               ? std::string("true")
+    //                                               : std::string("false"))
+    //                               .c_str());
+    //                 }
+    //             }
+    //         } else if ("ENABLE-NOON" == hlo.m_name) {
+    //             if (VSCP_REMOTE_VARIABLE_CODE_BOOLEAN != hlo.m_varType) {
+    //                 // Wrong variable type
+    //                 sprintf(buf,
+    //                         HLO_READ_VAR_ERR_REPLY_TEMPLATE,
+    //                         "enable-noon",
+    //                         ERR_VARIABLE_WRONG_TYPE,
+    //                         "Variable type should be boolean.");
+    //             } else {
+    //                 vscp_trim(hlo.m_value);
+    //                 vscp_makeUpper(hlo.m_value);
+    //                 if ("TRUE" == hlo.m_value) {
+    //                     enableCalculatedNoonEvent();
+    //                     sprintf(buf,
+    //                             HLO_READ_VAR_REPLY_TEMPLATE,
+    //                             "enable-noon",
+    //                             "OK",
+    //                             VSCP_REMOTE_VARIABLE_CODE_BOOLEAN,
+    //                             vscp_convertToBase64(isSendCalculatedNoonEvent()
+    //                                               ? std::string("true")
+    //                                               : std::string("false"))
+    //                               .c_str());
+    //                 } else {
+    //                     disableCalculatedNoonEvent();
+    //                     sprintf(buf,
+    //                             HLO_READ_VAR_REPLY_TEMPLATE,
+    //                             "enable-sunrise",
+    //                             "OK",
+    //                             VSCP_REMOTE_VARIABLE_CODE_BOOLEAN,
+    //                             vscp_convertToBase64(isSendCalculatedNoonEvent()
+    //                                               ? std::string("true")
+    //                                               : std::string("false"))
+    //                               .c_str());
+    //                 }
+    //             }
+    //         } else if ("LONGITUDE" == hlo.m_name) {
+    //             if (VSCP_REMOTE_VARIABLE_CODE_DOUBLE != hlo.m_varType) {
+    //                 // Wrong variable type
+    //                 sprintf(buf,
+    //                         HLO_READ_VAR_ERR_REPLY_TEMPLATE,
+    //                         "enable-noon",
+    //                         ERR_VARIABLE_WRONG_TYPE,
+    //                         "Variable type should be boolean.");
+    //             }
+    //             sprintf(buf,
+    //                     HLO_READ_VAR_REPLY_TEMPLATE,
+    //                     "longitude",
+    //                     "OK",
+    //                     5,
+    //                     vscp_convertToBase64(getLongitudeStr()).c_str());
+    //         } else if ("LATITUDE" == hlo.m_name) {
+    //             sprintf(buf,
+    //                     HLO_READ_VAR_REPLY_TEMPLATE,
+    //                     "latitude",
+    //                     "OK",
+    //                     5,
+    //                     vscp_convertToBase64(getLatitudeStr()).c_str());
+    //         } else if ("ZONE" == hlo.m_name) {
+    //             sprintf(buf,
+    //                     HLO_READ_VAR_REPLY_TEMPLATE,
+    //                     "zone",
+    //                     "OK",
+    //                     3,
+    //                     vscp_convertToBase64(getZoneStr()).c_str());
+    //         } else if ("SUBZONE" == hlo.m_name) {
+    //             sprintf(buf,
+    //                     HLO_READ_VAR_REPLY_TEMPLATE,
+    //                     "subzone",
+    //                     "OK",
+    //                     3,
+    //                     vscp_convertToBase64(getSubZoneStr()).c_str());
+    //         } else if ("DAYLENGTH" == hlo.m_name) {
+    //             sprintf(buf,
+    //                     HLO_READ_VAR_REPLY_TEMPLATE,
+    //                     "daylength",
+    //                     "OK",
+    //                     5,
+    //                     vscp_convertToBase64(getDayLengthStr()).c_str());
+    //         } else if ("DECLINATION" == hlo.m_name) {
+    //             sprintf(buf,
+    //                     HLO_READ_VAR_REPLY_TEMPLATE,
+    //                     "declination",
+    //                     "OK",
+    //                     5,
+    //                     vscp_convertToBase64(getDeclinationStr()).c_str());
+    //         } else if ("SUN-MAX-ALTITUDE" == hlo.m_name) {
+    //             sprintf(buf,
+    //                     HLO_READ_VAR_REPLY_TEMPLATE,
+    //                     "sun-max-altitude",
+    //                     "OK",
+    //                     5,
+    //                     vscp_convertToBase64(getSunMaxAltitudeStr()).c_str());
+    //         } else if ("LAST-CALCULATION" == hlo.m_name) {
+    //             sprintf(buf,
+    //                     HLO_READ_VAR_REPLY_TEMPLATE,
+    //                     "last-calculation",
+    //                     "OK",
+    //                     13,
+    //                     vscp_convertToBase64(getLastCalculation().getISODateTime())
+    //                       .c_str());
+    //         } else {
+    //             sprintf(
+    //               buf,
+    //               HLO_READ_VAR_ERR_REPLY_TEMPLATE,
+    //               hlo.m_name.c_str(),
+    //               1,
+    //               vscp_convertToBase64(std::string("Unknown variable")).c_str());
+    //         }
+    //         break;
 
-        case HLO_OP_LOAD:
-            doLoadConfig();
-            break;
+    //     case HLO_OP_SAVE:
+    //         doSaveConfig();
+    //         break;
 
-        case HLO_USER_CALC_ASTRO:
-            doCalc();
-            break;
+    //     case HLO_OP_LOAD:
+    //         doLoadConfig();
+    //         break;
 
-        default:
-            break;
-    };
+    //     case HLO_USER_CALC_ASTRO:
+    //         doCalc();
+    //         break;
+
+    //     default:
+    //         break;
+    // };
 
     return true;
 }

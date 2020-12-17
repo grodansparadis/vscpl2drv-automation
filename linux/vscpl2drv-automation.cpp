@@ -241,12 +241,10 @@ VSCPRead(long handle, vscpEvent *pEvent, unsigned long timeout)
         if (ETIMEDOUT == errno) {
             return CANAL_ERROR_TIMEOUT;
         } else if (EINTR == errno) {
-            syslog(LOG_ERR,
-                   "[vscpl2drv-automation] Interrupted by a signal handler");
+            syslog(LOG_ERR, "[vscpl2drv-automation] Interrupted by a signal handler");
             return CANAL_ERROR_INTERNAL;
         } else if (EINVAL == errno) {
-            syslog(LOG_ERR,
-                   "[vscpl2drv-automation] Invalid semaphore (timout)");
+            syslog(LOG_ERR, "[vscpl2drv-automation] Invalid semaphore (timout)");
             return CANAL_ERROR_INTERNAL;
         } else if (EAGAIN == errno) {
             syslog(LOG_ERR, "[vscpl2drv-automation] Blocking error");
