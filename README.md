@@ -269,4 +269,4 @@ You can read the following remote variable values from the vscpl2drv-automation 
 | save | Save configuration to disk (if writable) |
 | load | Load configuration from disk |
 
-Copyright (C) 2000-2020 Ake Hedman, Grodans Paradis AB - MIT license.
+Copyright (C) 2000-2021 Ake Hedman, Grodans Paradis AB - MIT license.

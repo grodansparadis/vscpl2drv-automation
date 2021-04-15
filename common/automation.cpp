@@ -4,7 +4,7 @@
 //
 // The MIT License (MIT)
 //
-// Copyright (C) 2000-2020 Ake Hedman, Grodans Paradis AB
+// Copyright (C) 2000-2021 Ake Hedman, Grodans Paradis AB
 // <info@grodansparadis.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -813,7 +813,8 @@ CAutomation::doLoadConfig(void)
         return false;
     }
 
-    XML_ParserFree(xmlParser);*/
+    XML_ParserFree(xmlParser);
+    */
 
     try {
         std::ifstream in(m_path, std::ifstream::in);
@@ -829,7 +830,6 @@ CAutomation::doLoadConfig(void)
             m_bDebug = m_j_config["debug-enable"].get<bool>();
         } else {
             syslog(LOG_ERR, "ReadConfig: Failed to read 'enable-debug'. Default will be used.");
-            return false;
         }
 
         if (m_bDebug) {
@@ -838,7 +838,6 @@ CAutomation::doLoadConfig(void)
     }
     catch (...) {
         syslog(LOG_ERR, "ReadConfig: Failed to read 'debug-enable'. Default will be used.");
-        return false;
     }
 
     try {
@@ -846,7 +845,6 @@ CAutomation::doLoadConfig(void)
             m_bDebug = m_j_config["write-enable"].get<bool>();
         } else {
             syslog(LOG_ERR, "ReadConfig: Failed to read 'write-debug'. Default will be used.");
-            return false;
         }
 
         if (m_bDebug) {
@@ -855,7 +853,6 @@ CAutomation::doLoadConfig(void)
     }
     catch (...) {
         syslog(LOG_ERR, "ReadConfig: Failed to read 'write-enable'. Default will be used.");
-        return false;
     }
 
     try {
@@ -863,7 +860,6 @@ CAutomation::doLoadConfig(void)
             m_bDebug = m_j_config["zone"].get<bool>();
         } else {
             syslog(LOG_ERR, "ReadConfig: Failed to read 'zone'. Default will be used.");
-            return false;
         }
 
         if (m_bDebug) {
@@ -872,7 +868,6 @@ CAutomation::doLoadConfig(void)
     }
     catch (...) {
         syslog(LOG_ERR, "ReadConfig: Failed to read 'zone'. Default will be used.");
-        return false;
     }
 
     try {
@@ -880,7 +875,6 @@ CAutomation::doLoadConfig(void)
             m_bDebug = m_j_config["subzone"].get<bool>();
         } else {
             syslog(LOG_ERR, "ReadConfig: Failed to read 'subzone'. Default will be used.");
-            return false;
         }
 
         if (m_bDebug) {
@@ -889,7 +883,6 @@ CAutomation::doLoadConfig(void)
     }
     catch (...) {
         syslog(LOG_ERR, "ReadConfig: Failed to read 'subzone'. Default will be used.");
-        return false;
     }
 
     try {
@@ -897,7 +890,6 @@ CAutomation::doLoadConfig(void)
             m_longitude = m_j_config["longitude"].get<bool>();
         } else {
             syslog(LOG_ERR, "ReadConfig: Failed to read 'longitude'. Default will be used.");
-            return false;
         }
 
         if (m_bDebug) {
@@ -906,7 +898,6 @@ CAutomation::doLoadConfig(void)
     }
     catch (...) {
         syslog(LOG_ERR, "ReadConfig: Failed to read 'longitude'. Default will be used.");
-        return false;
     }
 
     try {
@@ -914,7 +905,6 @@ CAutomation::doLoadConfig(void)
             m_latitude = m_j_config["latitude"].get<bool>();
         } else {
             syslog(LOG_ERR, "ReadConfig: Failed to read 'latitude'. Default will be used.");
-            return false;
         }
 
         if (m_bDebug) {
@@ -923,7 +913,6 @@ CAutomation::doLoadConfig(void)
     }
     catch (...) {
         syslog(LOG_ERR, "ReadConfig: Failed to read 'latitude'. Default will be used.");
-        return false;
     }
 
     try {
@@ -931,7 +920,6 @@ CAutomation::doLoadConfig(void)
             m_bSunRiseEvent = m_j_config["sunrise-enable"].get<bool>();
         } else {
             syslog(LOG_ERR, "ReadConfig: Failed to read 'sunrise-debug'. Default will be used.");
-            return false;
         }
 
         if (m_bDebug) {
@@ -940,7 +928,6 @@ CAutomation::doLoadConfig(void)
     }
     catch (...) {
         syslog(LOG_ERR, "ReadConfig: Failed to read 'sunrise-enable'. Default will be used.");
-        return false;
     }
 
     try {
@@ -948,7 +935,6 @@ CAutomation::doLoadConfig(void)
             m_bSunRiseTwilightEvent = m_j_config["sunrise-twilight-enable"].get<bool>();
         } else {
             syslog(LOG_ERR, "ReadConfig: Failed to read 'sunrise-twilight-debug'. Default will be used.");
-            return false;
         }
 
         if (m_bDebug) {
@@ -957,7 +943,6 @@ CAutomation::doLoadConfig(void)
     }
     catch (...) {
         syslog(LOG_ERR, "ReadConfig: Failed to read 'sunrise-twilight-enable'. Default will be used.");
-        return false;
     }
 
     try {
@@ -965,7 +950,6 @@ CAutomation::doLoadConfig(void)
             m_bSunSetEvent = m_j_config["sunset-enable"].get<bool>();
         } else {
             syslog(LOG_ERR, "ReadConfig: Failed to read 'sunset-debug'. Default will be used.");
-            return false;
         }
 
         if (m_bDebug) {
@@ -974,7 +958,6 @@ CAutomation::doLoadConfig(void)
     }
     catch (...) {
         syslog(LOG_ERR, "ReadConfig: Failed to read 'sunset-enable'. Default will be used.");
-        return false;
     }
 
     try {
@@ -982,7 +965,6 @@ CAutomation::doLoadConfig(void)
             m_bSunSetTwilightEvent = m_j_config["sunset-twilight-enable"].get<bool>();
         } else {
             syslog(LOG_ERR, "ReadConfig: Failed to read 'sunset-twilight-debug'. Default will be used.");
-            return false;
         }
 
         if (m_bDebug) {
@@ -991,7 +973,6 @@ CAutomation::doLoadConfig(void)
     }
     catch (...) {
         syslog(LOG_ERR, "ReadConfig: Failed to read 'sunset-twilight-enable'. Default will be used.");
-        return false;
     }
 
     // if (!readEncryptionKey(m_j_config.value("vscp-key-file", ""))) {
