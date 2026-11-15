@@ -7,6 +7,7 @@ tagged, rename **Unreleased** to the version and date, and start a new
 
 ## Unreleased
 
+- The vscp submodule (vscp) points to the latest vscp master (d75d4f5c6)
 - Updated copyright (ae5ecf4)
 - Changed config file to JSON (5887aad)
 - Fixed semwait problem (3ca1e13)
